@@ -3,70 +3,29 @@ import OpenAI from 'openai';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
 
-// Step 1: Use Perplexity to find real products with real prices
-async function searchProducts(query) {
-  const prompt = `You are a shopping assistant. Find exactly 3 specific products to buy for: "${query}"
+const BAD_URL_PATTERNS = [
+  '/s?k=', '/search?', '/search/', '/c/kp/', '/category/', '/browse/',
+  '/collections/', '/b/', 'sb2/', '/kp/', 'N-5yc', '/pdp/search',
+  '?q=', '&q=', '/results?',
+];
 
-Search for real products currently available for purchase. For each product find:
-- The exact product name (brand + model)
-- The current retail price
-- The direct product page URL (not a category or search page — the actual individual product listing)
+const BAD_DOMAINS = [
+  'rtings.com', 'wirecutter.com', 'cnet.com', 'pcmag.com', 'tomsguide.com',
+  'techradar.com', 'reviewed.com', 'consumerreports.org', 'theverge.com',
+  'youtube.com', 'reddit.com', 'wikipedia.org',
+];
 
-Return ONLY valid JSON, no markdown, no explanation:
-[
-  {"title": "Brand Model Name", "price": "$XX.XX", "url": "https://exact-product-page-url"},
-  {"title": "Brand Model Name", "price": "$XX.XX", "url": "https://exact-product-page-url"},
-  {"title": "Brand Model Name", "price": "$XX.XX", "url": "https://exact-product-page-url"}
-]
-
-Order: [0] = best quality, [1] = best value, [2] = most affordable
-Prefer: official brand sites, Amazon individual product pages, major retailers
-Never use: search result pages, category pages`;
-
-  const res = await fetch('https://api.perplexity.ai/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${PERPLEXITY_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'sonar',
-      messages: [{ role: 'user', content: prompt }],
-      return_citations: true,
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Perplexity error: ${res.status}`);
-  const data = await res.json();
-  const content = data.choices[0].message.content;
-  const citations = data.citations || [];
-
-  // Parse JSON from response
-  const match = content.match(/\[[\s\S]*\]/);
-  if (!match) throw new Error('No JSON in Perplexity response');
-  const products = JSON.parse(match[0]);
-
-  // Validate and fix URLs using citations if needed
-  return products.map((p, i) => ({
-    ...p,
-    url: isValidProductUrl(p.url) ? p.url : (citations[i] || p.url),
-    price: p.price || null,
-  }));
-}
-
-function isValidProductUrl(url) {
+function isDirectProductUrl(url) {
   if (!url) return false;
   try {
     const u = new URL(url);
-    // Reject category pages, search pages
-    const bad = ['/s?k=', '/search?', '/c/kp/', '/category/', '/collections/', '/browse/', '/b/'];
-    return bad.every(b => !u.pathname.includes(b) && !u.search.includes('k='));
+    if (BAD_DOMAINS.some(d => u.hostname.includes(d))) return false;
+    return BAD_URL_PATTERNS.every(p => !url.includes(p));
   } catch {
     return false;
   }
 }
 
-// Validate a URL is reachable
 async function validateUrl(url) {
   try {
     const controller = new AbortController();
@@ -84,27 +43,77 @@ async function validateUrl(url) {
   }
 }
 
-// Step 2: GPT picks pros/cons/summary for each product
+async function searchProducts(query) {
+  const prompt = `Find 3 specific products available for purchase right now for: "${query}"
+
+Requirements:
+- URL must be a RETAILER product page (Amazon, Target, Best Buy, Walmart, Wayfair, brand store, etc.)
+- URL must be a direct individual product listing — NOT a review site, NOT a search page, NOT a category page
+- Price must be an exact dollar amount like $49.99 — NOT "under $100" or "starting at" or a range
+- If you cannot find an exact price, skip that product and find another
+
+GOOD urls: https://www.amazon.com/dp/B0XXXXXXXX or https://www.bestbuy.com/site/product/XXXXX.p or https://www.target.com/p/product/-/A-XXXXX
+BAD urls: https://www.rtings.com/... or any review site, any /search/, any /s?k=, any /category/
+
+Return ONLY this JSON array — no text before or after:
+[
+  {"title": "Brand Model Name", "price": "$XX.XX", "url": "https://retailer.com/product/..."},
+  {"title": "Brand Model Name", "price": "$XX.XX", "url": "https://retailer.com/product/..."},
+  {"title": "Brand Model Name", "price": "$XX.XX", "url": "https://retailer.com/product/..."}
+]
+
+Order: [0] best quality, [1] best value, [2] most affordable`;
+
+  const res = await fetch('https://api.perplexity.ai/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${PERPLEXITY_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'sonar',
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Perplexity error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  const content = data.choices[0].message.content;
+
+  // Extract JSON array from response
+  const match = content.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error('No JSON array in Perplexity response');
+
+  const products = JSON.parse(match[0]);
+  if (!Array.isArray(products) || products.length < 3) throw new Error('Not enough products returned');
+
+  return products;
+}
+
 async function enrichProducts(products, query) {
   const productList = products.map((p, i) =>
     `${i + 1}. ${p.title} — ${p.price}`
   ).join('\n');
 
-  const prompt = `User is looking for: "${query}"
+  const prompt = `User searched for: "${query}"
 
-Here are 3 products found from live search:
+Products found:
 ${productList}
 
-For each product write:
-- 2 very short pros (max 5 words each)
+Write for each product:
+- 2 short pros (max 5 words each)  
 - 1 short con (max 7 words)
 - 1 "best for" line (max 8 words, no period)
 
-Return ONLY this JSON:
+Return ONLY this JSON array:
 [
-  {"pros": ["Pro 1", "Pro 2"], "con": "Con here", "summary": "Best for who and why"},
-  {"pros": ["Pro 1", "Pro 2"], "con": "Con here", "summary": "Best for who and why"},
-  {"pros": ["Pro 1", "Pro 2"], "con": "Con here", "summary": "Best for who and why"}
+  {"pros": ["Pro 1", "Pro 2"], "con": "Con here", "summary": "Best for line"},
+  {"pros": ["Pro 1", "Pro 2"], "con": "Con here", "summary": "Best for line"},
+  {"pros": ["Pro 1", "Pro 2"], "con": "Con here", "summary": "Best for line"}
 ]`;
 
   const completion = await openai.chat.completions.create({
@@ -112,14 +121,12 @@ Return ONLY this JSON:
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.3,
     max_tokens: 500,
-    response_format: { type: 'json_object' },
   });
 
-  const raw = completion.choices[0].message.content;
-  // Response format wraps in object — extract array
-  const parsed = JSON.parse(raw);
-  const arr = Array.isArray(parsed) ? parsed : (parsed.results || parsed.products || Object.values(parsed)[0]);
-  return arr;
+  const raw = completion.choices[0].message.content.trim();
+  const match = raw.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error('No JSON array in GPT response');
+  return JSON.parse(match[0]);
 }
 
 export default async function handler(req, res) {
@@ -128,40 +135,46 @@ export default async function handler(req, res) {
   if (!query?.trim()) return res.status(400).json({ error: 'Query is required' });
 
   try {
-    // Step 1: Get real products + prices from Perplexity
+    // Step 1: Perplexity finds real products with real prices and direct URLs
     const products = await searchProducts(query);
-    if (!products || products.length < 3) throw new Error('Not enough products found');
 
-    // Step 2: Validate URLs in parallel, replace broken ones with Amazon search fallback
+    // Reject products with vague prices
+    const cleanProducts = products.map(p => ({
+      ...p,
+      price: /\$\d+(\.\d{2})?/.test(p.price) ? p.price.match(/\$[\d,]+(\.\d{2})?/)[0] : null,
+    }));
+
+    // Step 2: Validate URLs — reject category/search pages, verify reachable
     const validatedProducts = await Promise.all(
-      products.map(async (p) => {
-        const valid = isValidProductUrl(p.url) && await validateUrl(p.url);
+      cleanProducts.map(async (p) => {
+        const isDirect = isDirectProductUrl(p.url);
+        const isReachable = isDirect ? await validateUrl(p.url) : false;
         return {
           ...p,
-          url: valid ? p.url : `https://www.amazon.com/s?k=${encodeURIComponent(p.title)}`,
-          urlValid: valid,
+          validUrl: isDirect && isReachable,
         };
       })
     );
 
-    // Step 3: Enrich with pros/cons from GPT
+    // Step 3: GPT enriches with pros/cons/summary
     const enriched = await enrichProducts(validatedProducts, query);
 
-    // Step 4: Merge
+    // Step 4: Build final results
     const labels = ['Top Pick', 'Best Value', 'Budget'];
     const results = validatedProducts.map((p, i) => ({
       label: labels[i],
       title: p.title,
-      price: p.price,
-      link: p.url,
-      pros: enriched[i]?.pros || ['Good quality', 'Reliable'],
-      con: enriched[i]?.con || 'Check reviews',
+      price: p.price || null,
+      link: p.validUrl ? p.url : `https://www.amazon.com/s?k=${encodeURIComponent(p.title)}`,
+      linkDirect: p.validUrl,
+      pros: enriched[i]?.pros || ['Quality option', 'Reliable'],
+      con: enriched[i]?.con || 'Check reviews first',
       summary: enriched[i]?.summary || '',
     }));
 
     return res.status(200).json({ results });
   } catch (err) {
-    console.error('Recommend error:', err);
+    console.error('Recommend error:', err.message);
     return res.status(500).json({ error: 'Failed to get recommendations. Please try again.' });
   }
 }

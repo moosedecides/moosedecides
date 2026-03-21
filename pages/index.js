@@ -89,7 +89,7 @@ export default function Home() {
                       <span className="con"><em>✗ {item.con}</em></span>
                     </div>
                     <a href={item.link} target="_blank" rel="noopener noreferrer" className="link">
-                      View Options →
+                      View Product →
                     </a>
                   </div>
                 );
