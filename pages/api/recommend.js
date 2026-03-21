@@ -16,7 +16,7 @@ function extractUrl(text) {
 }
 
 async function searchProducts(query) {
-  const prompt = `I want to buy: "${query}". Search Amazon.com, Walmart.com, Target.com, and BestBuy.com for real current listings. Give me exactly 3 specific products with exact prices currently for sale. Include the direct individual product page URL for each one (not a search or browse page).
+  const prompt = `I want to buy: "${query}". Search for real current product listings on retailer sites AND official brand/manufacturer sites (like trekbikes.com, adidas.com, sony.com, apple.com, etc.). Give me exactly 3 specific products with exact prices currently for sale. Include the direct individual product page URL for each one (not a search or browse page, not a review site).
 
 Format each product on its own line exactly like this (no extra text on that line):
 Product Name | $price | URL
@@ -33,7 +33,6 @@ Give me exactly 3 products. Order: best quality first, then best value, then low
       model: 'sonar',
       messages: [{ role: 'user', content: prompt }],
       return_citations: true,
-      search_domain_filter: RETAILER_DOMAINS,
     }),
   });
 
