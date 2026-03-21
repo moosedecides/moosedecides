@@ -53,11 +53,11 @@ export default function Home() {
         {/* Link preview (OG tags) */}
         <meta property="og:title" content="MooseDecides" />
         <meta property="og:description" content="Fast, honest product recommendations. No noise." />
-        <meta property="og:image" content="https://moosedecides.com/apple-touch-icon.png" />
+        <meta property="og:image" content="https://moosedecides.com/og-image.png" />
         <meta property="og:url" content="https://moosedecides.com" />
         <meta property="og:type" content="website" />
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:image" content="https://moosedecides.com/apple-touch-icon.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://moosedecides.com/og-image.png" />
       </Head>
 
       <div className="wrap">
