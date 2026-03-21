@@ -48,6 +48,24 @@ Rules:
   return null;
 }
 
+// Validate a URL is reachable
+async function validateUrl(url) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      redirect: 'follow',
+    });
+    clearTimeout(timeout);
+    return res.ok || res.status === 405; // 405 = HEAD not allowed but page exists
+  } catch {
+    return false;
+  }
+}
+
 // Step 2: Use web search to get the 3 best recommendations
 async function getRecommendations(query) {
   const prompt = `You are a product recommendation expert. For the query: "${query}"
@@ -118,9 +136,25 @@ export default async function handler(req, res) {
       recommendations.map(r => findProductWithLiveData(r.title, query))
     );
 
-    // Step 3: Merge
+    // Step 3: Validate URLs, retry if broken
+    const validatedLiveData = await Promise.all(
+      liveData.map(async (live, i) => {
+        if (!live?.link) return live;
+        const valid = await validateUrl(live.link);
+        if (valid) return live;
+        // Retry with another search if URL is broken
+        console.log(`URL invalid for ${recommendations[i].title}, retrying...`);
+        const retry = await findProductWithLiveData(
+          recommendations[i].title + ' buy online',
+          query
+        );
+        return retry || live; // fall back to original if retry also fails
+      })
+    );
+
+    // Step 4: Merge
     const results = recommendations.map((rec, i) => {
-      const live = liveData[i];
+      const live = validatedLiveData[i];
       return {
         title: live?.title || rec.title,
         price: live?.price || null,
