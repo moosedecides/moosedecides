@@ -54,13 +54,18 @@ export default function Home() {
             <p>Fast, honest recommendations. No noise.</p>
 
             <form onSubmit={handleSubmit} className="form">
-              <input
-                type="text"
-                className="input"
-                placeholder="e.g. best office chair with no lumbar support"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+              <div className="input-row">
+                <div className={`moose-wrap${loading ? ' walking' : ''}`}>
+                  <img src="/moose-logo.png" alt="Moose" className="moose-icon" />
+                </div>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="e.g. best office chair with no lumbar support"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
               <button type="submit" className="btn" disabled={loading}>
                 {loading ? 'Moose is thinking…' : 'Ask Moose'}
               </button>
@@ -143,24 +148,62 @@ export default function Home() {
         }
         .form {
           display: flex;
+          flex-direction: column;
           gap: 8px;
           width: 100%;
+        }
+        .input-row {
+          display: flex;
+          align-items: center;
+          background: #fff;
+          border: 1.5px solid #e0ddd8;
+          border-radius: 12px;
+          padding: 4px 4px 4px 8px;
+          gap: 8px;
+          transition: border-color 0.2s, box-shadow 0.2s;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .input-row:focus-within {
+          border-color: #8b7cf8;
+          box-shadow: 0 2px 16px rgba(139,124,248,0.18);
+        }
+        .moose-wrap {
+          width: 38px;
+          height: 38px;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .moose-icon {
+          width: 36px;
+          height: 36px;
+          object-fit: contain;
+          filter: drop-shadow(0 0 1.5px #8b7cf8) drop-shadow(0 0 1.5px #8b7cf8);
+          transition: transform 0.2s;
+        }
+        @keyframes mooseWalk {
+          0%   { transform: translateY(0px) rotate(-1deg); }
+          25%  { transform: translateY(-3px) rotate(1deg); }
+          50%  { transform: translateY(0px) rotate(-1deg); }
+          75%  { transform: translateY(-2px) rotate(0.5deg); }
+          100% { transform: translateY(0px) rotate(-1deg); }
+        }
+        .walking .moose-icon {
+          animation: mooseWalk 0.6s ease-in-out infinite;
         }
         .input {
           flex: 1;
           min-width: 0;
-          padding: 13px 16px;
+          padding: 10px 8px;
           font-size: 0.95rem;
-          border: 1px solid #ddd;
-          border-radius: 10px;
-          background: #fff;
+          border: none;
+          background: transparent;
           outline: none;
-          transition: border-color 0.15s;
           color: #111;
         }
-        .input:focus { border-color: #aaa; }
         .btn {
-          flex-shrink: 0;
+          width: 100%;
           padding: 13px 20px;
           font-size: 0.9rem;
           font-weight: 600;
