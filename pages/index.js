@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import Head from 'next/head';
-import ResultCard from '../components/ResultCard';
 import PromiseModal from '../components/PromiseModal';
 
 export default function Home() {
@@ -16,7 +15,6 @@ export default function Home() {
     setLoading(true);
     setError('');
     setResults(null);
-
     try {
       const res = await fetch('/api/recommend', {
         method: 'POST',
@@ -26,7 +24,7 @@ export default function Home() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResults(data.results);
-    } catch (err) {
+    } catch {
       setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
@@ -41,35 +39,52 @@ export default function Home() {
         <title>MooseDecides — Fast, honest recommendations</title>
         <meta name="description" content="Fast, honest product recommendations. No noise." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="container">
+      <div className="wrap">
         <main>
-          <div className="hero">
-            <h1 className="headline">What do you need help choosing?</h1>
-            <p className="subtext">Fast, honest recommendations. No noise.</p>
-
-            <form onSubmit={handleSubmit} className="search-form">
-              <input
-                type="text"
-                className="search-input"
-                placeholder="e.g. best office chair with no lumbar support"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <button type="submit" className="search-btn" disabled={loading}>
-                {loading ? 'Thinking...' : 'Ask Moose'}
-              </button>
-            </form>
+          {/* Header */}
+          <div className="header">
+            <h1>What do you need help choosing?</h1>
+            <p>Fast, honest recommendations. No noise.</p>
           </div>
+
+          {/* Search */}
+          <form onSubmit={handleSubmit} className="form">
+            <input
+              type="text"
+              className="input"
+              placeholder="e.g. best office chair with no lumbar support"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <button type="submit" className="btn" disabled={loading}>
+              {loading ? 'Moose is thinking…' : 'Ask Moose'}
+            </button>
+          </form>
 
           {error && <p className="error">{error}</p>}
 
+          {/* Results */}
           {results && (
             <div className="results">
               {results.map((item, i) => (
-                <ResultCard key={i} label={labels[i]} data={item} />
+                <div key={i} className="card">
+                  <div className="card-top">
+                    <span className="label">{labels[i]}</span>
+                    <span className="price">{item.price}</span>
+                  </div>
+                  <div className="title">{item.title}</div>
+                  <div className="bestfor">{item.summary}</div>
+                  <div className="pros-cons">
+                    <span className="pro">✓ {item.pros[0]}</span>
+                    <span className="pro">✓ {item.pros[1]}</span>
+                    <span className="con"><em>✗ {item.con}</em></span>
+                  </div>
+                  <a href={item.link} target="_blank" rel="noopener noreferrer" className="link">
+                    View →
+                  </a>
+                </div>
               ))}
             </div>
           )}
@@ -82,137 +97,178 @@ export default function Home() {
         </footer>
       </div>
 
-      <button className="promise-btn" onClick={() => setShowPromise(true)}>
-        Our Promise
-      </button>
-
+      <button className="promise-btn" onClick={() => setShowPromise(true)}>Our Promise</button>
       {showPromise && <PromiseModal onClose={() => setShowPromise(false)} />}
 
       <style jsx>{`
-        .container {
-          min-height: 100vh;
+        .wrap {
+          height: 100vh;
           display: flex;
           flex-direction: column;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          background: #f5f4f2;
-          color: #1a1a1a;
+          background: #f7f6f3;
+          color: #111;
+          overflow: hidden;
         }
         main {
           flex: 1;
           display: flex;
           flex-direction: column;
           align-items: center;
-          padding: 80px 20px 60px;
+          justify-content: center;
+          padding: 0 20px;
+          gap: 14px;
         }
-        .hero {
+        .header {
           text-align: center;
-          max-width: 680px;
-          width: 100%;
-          margin-bottom: 48px;
         }
-        .headline {
-          font-size: 2.2rem;
+        h1 {
+          font-size: 1.6rem;
           font-weight: 700;
-          margin: 0 0 12px;
-          letter-spacing: -0.5px;
+          margin: 0 0 4px;
+          letter-spacing: -0.3px;
+        }
+        .header p {
+          font-size: 0.9rem;
+          color: #888;
+          margin: 0;
+        }
+        .form {
+          display: flex;
+          gap: 8px;
+          width: 100%;
+          max-width: 620px;
+        }
+        .input {
+          flex: 1;
+          padding: 12px 16px;
+          font-size: 0.95rem;
+          border: 1px solid #ddd;
+          border-radius: 10px;
+          background: #fff;
+          outline: none;
+          transition: border-color 0.15s;
           color: #111;
         }
-        .subtext {
-          font-size: 1.05rem;
-          color: #666;
-          margin: 0 0 36px;
-        }
-        .search-form {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          width: 100%;
-        }
-        .search-input {
-          width: 100%;
-          padding: 18px 22px;
-          font-size: 1rem;
-          border: 1.5px solid #e0ddd8;
-          border-radius: 14px;
-          background: #fff;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-          outline: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
-          box-sizing: border-box;
-          color: #1a1a1a;
-        }
-        .search-input:focus {
-          border-color: #8b7cf8;
-          box-shadow: 0 2px 16px rgba(139,124,248,0.15);
-        }
-        .search-btn {
-          padding: 16px 28px;
-          font-size: 1rem;
+        .input:focus { border-color: #aaa; }
+        .btn {
+          padding: 12px 20px;
+          font-size: 0.9rem;
           font-weight: 600;
-          background: #1a1a1a;
+          background: #111;
           color: #fff;
           border: none;
-          border-radius: 12px;
+          border-radius: 10px;
           cursor: pointer;
-          transition: background 0.2s, transform 0.1s;
-          letter-spacing: 0.2px;
+          white-space: nowrap;
+          transition: background 0.15s;
         }
-        .search-btn:hover:not(:disabled) {
-          background: #333;
-          transform: translateY(-1px);
-        }
-        .search-btn:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
+        .btn:hover:not(:disabled) { background: #333; }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .error {
+          font-size: 0.85rem;
+          color: #c0392b;
         }
         .results {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 12px;
           width: 100%;
-          max-width: 680px;
+          max-width: 900px;
+        }
+        .card {
+          background: #fff;
+          border-radius: 12px;
+          padding: 14px 16px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 6px;
+          border: 1px solid #e8e6e1;
         }
-        .error {
-          color: #e53935;
+        .card-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .label {
+          font-size: 0.7rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          color: #888;
+        }
+        .price {
           font-size: 0.95rem;
-          margin-bottom: 20px;
+          font-weight: 700;
+          color: #111;
         }
+        .title {
+          font-size: 0.95rem;
+          font-weight: 700;
+          line-height: 1.3;
+          color: #111;
+        }
+        .bestfor {
+          font-size: 0.8rem;
+          color: #888;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .pros-cons {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .pro {
+          font-size: 0.8rem;
+          color: #444;
+        }
+        .con {
+          font-size: 0.8rem;
+          color: #666;
+        }
+        .link {
+          margin-top: 4px;
+          font-size: 0.82rem;
+          font-weight: 600;
+          color: #111;
+          text-decoration: none;
+          opacity: 0.6;
+          transition: opacity 0.15s;
+        }
+        .link:hover { opacity: 1; }
         footer {
           text-align: center;
-          padding: 24px;
+          padding: 12px;
           display: flex;
           justify-content: center;
-          gap: 28px;
+          gap: 20px;
         }
         footer a {
-          color: #999;
+          color: #bbb;
           text-decoration: none;
-          font-size: 0.85rem;
-          transition: color 0.2s;
+          font-size: 0.78rem;
+          transition: color 0.15s;
         }
-        footer a:hover {
-          color: #555;
-        }
+        footer a:hover { color: #777; }
         .promise-btn {
           position: fixed;
-          bottom: 24px;
-          right: 24px;
-          padding: 12px 20px;
-          font-size: 0.85rem;
+          bottom: 20px;
+          right: 20px;
+          padding: 9px 16px;
+          font-size: 0.78rem;
           font-weight: 600;
           background: #fff;
-          color: #1a1a1a;
-          border: 1.5px solid #e0ddd8;
+          color: #555;
+          border: 1px solid #ddd;
           border-radius: 50px;
           cursor: pointer;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-          transition: box-shadow 0.2s, transform 0.1s;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+          transition: box-shadow 0.15s;
           z-index: 100;
         }
-        .promise-btn:hover {
-          box-shadow: 0 6px 20px rgba(0,0,0,0.14);
-          transform: translateY(-1px);
-        }
+        .promise-btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
       `}</style>
     </>
   );
