@@ -79,7 +79,7 @@ export default function Home() {
                   <div key={i} className="card">
                     <div className="card-top">
                       <span className="label" style={{ background: colors.bg, color: colors.text }}>{lbl}</span>
-                      <span className="price">{item.price}</span>
+                      {item.price && <span className="price">{item.price}</span>}
                     </div>
                     <div className="title">{item.title}</div>
                     <div className="bestfor">{item.summary}</div>
