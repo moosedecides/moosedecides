@@ -71,7 +71,7 @@ export default function Home() {
             <form onSubmit={handleSubmit} className="form">
               <div className="input-row">
                 <div className={`moose-wrap${loading ? ' walking' : ''}`}>
-                  <img src="/moose-head.svg" alt="Moose" className="moose-icon" />
+                  <img src="/moose-logo.png" alt="Moose" className="moose-icon" />
                 </div>
                 <input
                   type="text"
