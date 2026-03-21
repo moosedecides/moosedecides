@@ -31,6 +31,11 @@ export default function Home() {
     }
   };
 
+  const labelColors = {
+    'Top Pick':   { bg: '#1a1a1a', text: '#fff' },
+    'Best Value': { bg: '#2d6a4f', text: '#fff' },
+    'Budget':     { bg: '#5c5470', text: '#fff' },
+  };
   const labels = ['Top Pick', 'Best Value', 'Budget'];
 
   return (
@@ -47,45 +52,48 @@ export default function Home() {
           <div className="header">
             <h1>What do you need help choosing?</h1>
             <p>Fast, honest recommendations. No noise.</p>
-          </div>
 
-          {/* Search */}
-          <form onSubmit={handleSubmit} className="form">
-            <input
-              type="text"
-              className="input"
-              placeholder="e.g. best office chair with no lumbar support"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <button type="submit" className="btn" disabled={loading}>
-              {loading ? 'Moose is thinking…' : 'Ask Moose'}
-            </button>
-          </form>
+            <form onSubmit={handleSubmit} className="form">
+              <input
+                type="text"
+                className="input"
+                placeholder="e.g. best office chair with no lumbar support"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <button type="submit" className="btn" disabled={loading}>
+                {loading ? 'Moose is thinking…' : 'Ask Moose'}
+              </button>
+            </form>
+          </div>
 
           {error && <p className="error">{error}</p>}
 
           {/* Results */}
           {results && (
             <div className="results">
-              {results.map((item, i) => (
-                <div key={i} className="card">
-                  <div className="card-top">
-                    <span className="label">{labels[i]}</span>
-                    <span className="price">{item.price}</span>
+              {results.map((item, i) => {
+                const lbl = labels[i];
+                const colors = labelColors[lbl];
+                return (
+                  <div key={i} className="card">
+                    <div className="card-top">
+                      <span className="label" style={{ background: colors.bg, color: colors.text }}>{lbl}</span>
+                      <span className="price">{item.price}</span>
+                    </div>
+                    <div className="title">{item.title}</div>
+                    <div className="bestfor">{item.summary}</div>
+                    <div className="pros-cons">
+                      <span className="pro">✓ {item.pros[0]}</span>
+                      <span className="pro">✓ {item.pros[1]}</span>
+                      <span className="con"><em>✗ {item.con}</em></span>
+                    </div>
+                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="link">
+                      View Product →
+                    </a>
                   </div>
-                  <div className="title">{item.title}</div>
-                  <div className="bestfor">{item.summary}</div>
-                  <div className="pros-cons">
-                    <span className="pro">✓ {item.pros[0]}</span>
-                    <span className="pro">✓ {item.pros[1]}</span>
-                    <span className="con"><em>✗ {item.con}</em></span>
-                  </div>
-                  <a href={item.link} target="_blank" rel="noopener noreferrer" className="link">
-                    View →
-                  </a>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </main>
@@ -102,46 +110,45 @@ export default function Home() {
 
       <style jsx>{`
         .wrap {
-          height: 100vh;
+          min-height: 100vh;
           display: flex;
           flex-direction: column;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           background: #f7f6f3;
           color: #111;
-          overflow: hidden;
         }
         main {
           flex: 1;
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
-          padding: 0 20px;
-          gap: 14px;
+          padding: 48px 20px 40px;
+          gap: 20px;
         }
         .header {
           text-align: center;
+          width: 100%;
+          max-width: 620px;
         }
         h1 {
-          font-size: 1.6rem;
+          font-size: 1.7rem;
           font-weight: 700;
-          margin: 0 0 4px;
+          margin: 0 0 6px;
           letter-spacing: -0.3px;
         }
         .header p {
           font-size: 0.9rem;
           color: #888;
-          margin: 0;
+          margin: 0 0 20px;
         }
         .form {
           display: flex;
           gap: 8px;
           width: 100%;
-          max-width: 620px;
         }
         .input {
           flex: 1;
-          padding: 12px 16px;
+          padding: 13px 16px;
           font-size: 0.95rem;
           border: 1px solid #ddd;
           border-radius: 10px;
@@ -152,7 +159,7 @@ export default function Home() {
         }
         .input:focus { border-color: #aaa; }
         .btn {
-          padding: 12px 20px;
+          padding: 13px 20px;
           font-size: 0.9rem;
           font-weight: 600;
           background: #111;
@@ -165,25 +172,28 @@ export default function Home() {
         }
         .btn:hover:not(:disabled) { background: #333; }
         .btn:disabled { opacity: 0.55; cursor: not-allowed; }
-        .error {
-          font-size: 0.85rem;
-          color: #c0392b;
-        }
+        .error { font-size: 0.85rem; color: #c0392b; }
+
         .results {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
+          display: flex;
+          flex-direction: column;
           gap: 12px;
           width: 100%;
-          max-width: 900px;
+          max-width: 620px;
         }
         .card {
           background: #fff;
-          border-radius: 12px;
-          padding: 14px 16px;
+          border-radius: 14px;
+          padding: 14px 18px;
           display: flex;
           flex-direction: column;
           gap: 6px;
           border: 1px solid #e8e6e1;
+          transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .card:hover {
+          box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+          transform: translateY(-1px);
         }
         .card-top {
           display: flex;
@@ -191,25 +201,26 @@ export default function Home() {
           align-items: center;
         }
         .label {
-          font-size: 0.7rem;
+          font-size: 0.68rem;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.8px;
-          color: #888;
+          padding: 4px 10px;
+          border-radius: 6px;
         }
         .price {
-          font-size: 0.95rem;
+          font-size: 1rem;
           font-weight: 700;
-          color: #111;
+          color: #2d6a4f;
         }
         .title {
-          font-size: 0.95rem;
+          font-size: 0.97rem;
           font-weight: 700;
-          line-height: 1.3;
           color: #111;
+          line-height: 1.3;
         }
         .bestfor {
-          font-size: 0.8rem;
+          font-size: 0.82rem;
           color: #888;
           white-space: nowrap;
           overflow: hidden;
@@ -220,27 +231,27 @@ export default function Home() {
           flex-direction: column;
           gap: 3px;
         }
-        .pro {
-          font-size: 0.8rem;
-          color: #444;
-        }
-        .con {
-          font-size: 0.8rem;
-          color: #666;
-        }
+        .pro { font-size: 0.82rem; color: #444; }
+        .con { font-size: 0.82rem; color: #666; }
         .link {
+          display: inline-block;
           margin-top: 4px;
+          padding: 7px 14px;
           font-size: 0.82rem;
           font-weight: 600;
-          color: #111;
+          color: #444;
+          background: #f0ede8;
+          border-radius: 8px;
           text-decoration: none;
-          opacity: 0.6;
-          transition: opacity 0.15s;
+          border: 1px solid #e0ddd8;
+          transition: background 0.15s;
+          width: fit-content;
         }
-        .link:hover { opacity: 1; }
+        .link:hover { background: #e5e1db; }
+
         footer {
           text-align: center;
-          padding: 12px;
+          padding: 16px;
           display: flex;
           justify-content: center;
           gap: 20px;
