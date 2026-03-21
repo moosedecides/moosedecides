@@ -46,6 +46,7 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         {/* Favicon */}
+        <link rel="icon" type="image/svg+xml" href="/moose-head.svg" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -70,7 +71,7 @@ export default function Home() {
             <form onSubmit={handleSubmit} className="form">
               <div className="input-row">
                 <div className={`moose-wrap${loading ? ' walking' : ''}`}>
-                  <img src="/moose-logo.png" alt="Moose" className="moose-icon" />
+                  <img src="/moose-head.svg" alt="Moose" className="moose-icon" />
                 </div>
                 <input
                   type="text"
