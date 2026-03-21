@@ -40,11 +40,11 @@ Rules:
 - Summary must be exactly 1 sentence
 - Price must be realistic and accurate
 - Recommendations must match the query precisely
-- Links must be DIRECT product page URLs (e.g. https://www.amazon.com/dp/ASIN or brand site product page)
-- NEVER use search URLs (no /s?k=, no /search?, no google.com/search)
-- If you know the exact Amazon ASIN, use https://www.amazon.com/dp/ASIN
-- Otherwise use the direct product URL from the brand's official site or a major retailer like Target, Best Buy, Home Depot, etc.
-- The link must take the user directly to the product page — 1 click, no searching
+- For the "link" field, generate an Amazon search URL using the exact brand and model name
+- Format: https://www.amazon.com/s?k=Brand+Model+Name (URL encode spaces as +)
+- Make the search query very specific: include brand name, model name, and key distinguishing feature
+- Example: https://www.amazon.com/s?k=Herman+Miller+Aeron+Chair+No+Lumbar
+- These links must always work and land on relevant results
 - First result = best overall (Top Pick), second = best value for money, third = lowest price option`;
 
 export default async function handler(req, res) {
