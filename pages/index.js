@@ -171,16 +171,15 @@ export default function Home() {
           display: flex;
           align-items: center;
           background: #fff;
-          border: 1.5px solid #e0ddd8;
+          border: 1.5px solid #8b7cf8;
           border-radius: 12px;
           padding: 4px 4px 4px 8px;
           gap: 8px;
-          transition: border-color 0.2s, box-shadow 0.2s;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+          box-shadow: 0 2px 16px rgba(139,124,248,0.15);
+          transition: box-shadow 0.2s;
         }
         .input-row:focus-within {
-          border-color: #8b7cf8;
-          box-shadow: 0 2px 16px rgba(139,124,248,0.18);
+          box-shadow: 0 2px 22px rgba(139,124,248,0.28);
         }
         .moose-wrap {
           width: 38px;
