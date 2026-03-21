@@ -1,25 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <!-- Antlers left -->
-  <path d="M 32 28 L 26 10 M 26 10 L 20 4 M 26 10 L 22 14 M 26 10 L 30 5" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round" fill="none"/>
-  <!-- Antlers right -->
-  <path d="M 68 28 L 74 10 M 74 10 L 80 4 M 74 10 L 78 14 M 74 10 L 70 5" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round" fill="none"/>
-  <!-- Head -->
-  <ellipse cx="50" cy="52" rx="22" ry="26" fill="#1a1a1a"/>
-  <!-- Snout / bulbous nose -->
-  <ellipse cx="50" cy="71" rx="13" ry="9" fill="#1a1a1a"/>
-  <ellipse cx="50" cy="74" rx="9" ry="6" fill="#2a2a2a"/>
-  <!-- Nostrils -->
-  <ellipse cx="46" cy="75" rx="2" ry="1.5" fill="#111"/>
-  <ellipse cx="54" cy="75" rx="2" ry="1.5" fill="#111"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Left antler main beam -->
+  <path d="M 72 52 C 65 45, 55 38, 48 28 C 44 22, 42 14, 45 8 C 47 4, 50 3, 52 5 C 54 7, 53 12, 55 16 C 58 22, 63 26, 67 32 C 64 24, 62 16, 65 10 C 67 6, 70 5, 72 7 C 74 9, 73 15, 74 20 C 76 28, 80 34, 82 40 C 78 32, 76 24, 80 18 C 82 14, 85 14, 86 17 C 88 21, 86 28, 85 34 C 83 40, 82 46, 82 52 Z" fill="#1a1a1a"/>
+  <!-- Right antler main beam -->
+  <path d="M 128 52 C 135 45, 145 38, 152 28 C 156 22, 158 14, 155 8 C 153 4, 150 3, 148 5 C 146 7, 147 12, 145 16 C 142 22, 137 26, 133 32 C 136 24, 138 16, 135 10 C 133 6, 130 5, 128 7 C 126 9, 127 15, 126 20 C 124 28, 120 34, 118 40 C 122 32, 124 24, 120 18 C 118 14, 115 14, 114 17 C 112 21, 114 28, 115 34 C 117 40, 118 46, 118 52 Z" fill="#1a1a1a"/>
+  <!-- Left antler brow tine -->
+  <path d="M 74 58 C 68 54, 60 52, 54 48 C 50 45, 48 41, 50 38 C 52 35, 56 36, 59 39 C 63 43, 68 50, 74 56 Z" fill="#1a1a1a"/>
+  <!-- Right antler brow tine -->
+  <path d="M 126 58 C 132 54, 140 52, 146 48 C 150 45, 152 41, 150 38 C 148 35, 144 36, 141 39 C 137 43, 132 50, 126 56 Z" fill="#1a1a1a"/>
+  <!-- Skull / top of head -->
+  <ellipse cx="100" cy="68" rx="30" ry="18" fill="#1a1a1a"/>
+  <!-- Left ear -->
+  <path d="M 68 72 C 60 68, 54 64, 52 58 C 50 53, 53 48, 57 50 C 61 52, 65 58, 68 64 Z" fill="#1a1a1a"/>
+  <!-- Right ear -->
+  <path d="M 132 72 C 140 68, 146 64, 148 58 C 150 53, 147 48, 143 50 C 139 52, 135 58, 132 64 Z" fill="#1a1a1a"/>
+  <!-- Face / head body -->
+  <path d="M 70 70 C 65 75, 62 82, 62 90 C 62 100, 65 110, 70 118 C 75 126, 82 132, 90 136 C 88 138, 86 140, 88 142 C 90 144, 95 143, 100 143 C 105 143, 110 144, 112 142 C 114 140, 112 138, 110 136 C 118 132, 125 126, 130 118 C 135 110, 138 100, 138 90 C 138 82, 135 75, 130 70 Z" fill="#1a1a1a"/>
+  <!-- Snout highlight (white area) -->
+  <path d="M 82 98 C 80 92, 80 86, 83 82 C 86 78, 90 76, 95 76 C 100 76, 105 76, 109 80 C 113 84, 114 90, 113 96 C 111 103, 107 108, 100 110 C 93 108, 85 105, 82 98 Z" fill="#f0ede8"/>
   <!-- Eyes -->
-  <circle cx="40" cy="48" r="4" fill="#fff"/>
-  <circle cx="60" cy="48" r="4" fill="#fff"/>
-  <circle cx="41" cy="48" r="2.5" fill="#1a1a1a"/>
-  <circle cx="61" cy="48" r="2.5" fill="#1a1a1a"/>
-  <!-- Eye shine -->
-  <circle cx="42" cy="47" r="1" fill="#fff"/>
-  <circle cx="62" cy="47" r="1" fill="#fff"/>
-  <!-- Ears -->
-  <ellipse cx="27" cy="40" rx="6" ry="9" fill="#1a1a1a" transform="rotate(-15 27 40)"/>
-  <ellipse cx="73" cy="40" rx="6" ry="9" fill="#1a1a1a" transform="rotate(15 73 40)"/>
+  <ellipse cx="83" cy="84" rx="8" ry="6" fill="#1a1a1a"/>
+  <ellipse cx="117" cy="84" rx="8" ry="6" fill="#1a1a1a"/>
+  <ellipse cx="83" cy="84" rx="5" ry="4" fill="#f0ede8"/>
+  <ellipse cx="117" cy="84" rx="5" ry="4" fill="#f0ede8"/>
+  <circle cx="83" cy="84" r="2.5" fill="#1a1a1a"/>
+  <circle cx="117" cy="84" r="2.5" fill="#1a1a1a"/>
+  <circle cx="84" cy="83" r="1" fill="#fff"/>
+  <circle cx="118" cy="83" r="1" fill="#fff"/>
+  <!-- Nose -->
+  <path d="M 90 106 C 88 103, 88 100, 91 99 C 94 98, 100 98, 106 99 C 109 100, 110 103, 108 106 C 106 109, 103 111, 100 111 C 97 111, 92 109, 90 106 Z" fill="#1a1a1a"/>
+  <!-- Nostrils -->
+  <ellipse cx="95" cy="107" rx="2.5" ry="1.5" fill="#f0ede8"/>
+  <ellipse cx="105" cy="107" rx="2.5" ry="1.5" fill="#f0ede8"/>
+  <!-- Neck (no beard — clean cut) -->
+  <path d="M 88 143 C 84 148, 82 154, 84 160 C 88 162, 100 163, 116 160 C 118 154, 116 148, 112 143 C 107 144, 93 144, 88 143 Z" fill="#1a1a1a"/>
 </svg>
