@@ -13,24 +13,18 @@
   <path d="M 68 72 C 60 68, 54 64, 52 58 C 50 53, 53 48, 57 50 C 61 52, 65 58, 68 64 Z" fill="#1a1a1a"/>
   <!-- Right ear -->
   <path d="M 132 72 C 140 68, 146 64, 148 58 C 150 53, 147 48, 143 50 C 139 52, 135 58, 132 64 Z" fill="#1a1a1a"/>
-  <!-- Face / head body -->
-  <path d="M 70 70 C 65 75, 62 82, 62 90 C 62 100, 65 110, 70 118 C 75 126, 82 132, 90 136 C 88 138, 86 140, 88 142 C 90 144, 95 143, 100 143 C 105 143, 110 144, 112 142 C 114 140, 112 138, 110 136 C 118 132, 125 126, 130 118 C 135 110, 138 100, 138 90 C 138 82, 135 75, 130 70 Z" fill="#1a1a1a"/>
-  <!-- Snout highlight (white area) -->
-  <path d="M 82 98 C 80 92, 80 86, 83 82 C 86 78, 90 76, 95 76 C 100 76, 105 76, 109 80 C 113 84, 114 90, 113 96 C 111 103, 107 108, 100 110 C 93 108, 85 105, 82 98 Z" fill="#f0ede8"/>
+  <!-- Face / head — clean bottom, no beard -->
+  <path d="M 70 70 C 65 75, 62 82, 62 90 C 62 100, 65 110, 70 118 C 76 128, 86 136, 100 138 C 114 136, 124 128, 130 118 C 135 110, 138 100, 138 90 C 138 82, 135 75, 130 70 Z" fill="#1a1a1a"/>
   <!-- Eyes -->
-  <ellipse cx="83" cy="84" rx="8" ry="6" fill="#1a1a1a"/>
-  <ellipse cx="117" cy="84" rx="8" ry="6" fill="#1a1a1a"/>
-  <ellipse cx="83" cy="84" rx="5" ry="4" fill="#f0ede8"/>
-  <ellipse cx="117" cy="84" rx="5" ry="4" fill="#f0ede8"/>
-  <circle cx="83" cy="84" r="2.5" fill="#1a1a1a"/>
-  <circle cx="117" cy="84" r="2.5" fill="#1a1a1a"/>
-  <circle cx="84" cy="83" r="1" fill="#fff"/>
-  <circle cx="118" cy="83" r="1" fill="#fff"/>
-  <!-- Nose -->
-  <path d="M 90 106 C 88 103, 88 100, 91 99 C 94 98, 100 98, 106 99 C 109 100, 110 103, 108 106 C 106 109, 103 111, 100 111 C 97 111, 92 109, 90 106 Z" fill="#1a1a1a"/>
+  <circle cx="83" cy="87" r="7" fill="#fff"/>
+  <circle cx="117" cy="87" r="7" fill="#fff"/>
+  <circle cx="83" cy="87" r="4" fill="#1a1a1a"/>
+  <circle cx="117" cy="87" r="4" fill="#1a1a1a"/>
+  <circle cx="84.5" cy="85.5" r="1.5" fill="#fff"/>
+  <circle cx="118.5" cy="85.5" r="1.5" fill="#fff"/>
+  <!-- Snout -->
+  <ellipse cx="100" cy="116" rx="16" ry="11" fill="#1a1a1a"/>
   <!-- Nostrils -->
-  <ellipse cx="95" cy="107" rx="2.5" ry="1.5" fill="#f0ede8"/>
-  <ellipse cx="105" cy="107" rx="2.5" ry="1.5" fill="#f0ede8"/>
-  <!-- Neck (no beard — clean cut) -->
-  <path d="M 88 143 C 84 148, 82 154, 84 160 C 88 162, 100 163, 116 160 C 118 154, 116 148, 112 143 C 107 144, 93 144, 88 143 Z" fill="#1a1a1a"/>
+  <ellipse cx="94" cy="118" rx="3" ry="2" fill="#333"/>
+  <ellipse cx="106" cy="118" rx="3" ry="2" fill="#333"/>
 </svg>
