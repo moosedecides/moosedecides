@@ -44,6 +44,20 @@ export default function Home() {
         <title>MooseDecides — Fast, honest recommendations</title>
         <meta name="description" content="Fast, honest product recommendations. No noise." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+        {/* Favicon */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+        {/* Link preview (OG tags) */}
+        <meta property="og:title" content="MooseDecides" />
+        <meta property="og:description" content="Fast, honest product recommendations. No noise." />
+        <meta property="og:image" content="https://moosedecides.com/apple-touch-icon.png" />
+        <meta property="og:url" content="https://moosedecides.com" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:image" content="https://moosedecides.com/apple-touch-icon.png" />
       </Head>
 
       <div className="wrap">
