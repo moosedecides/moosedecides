@@ -148,6 +148,7 @@ export default function Home() {
         }
         .input {
           flex: 1;
+          min-width: 0;
           padding: 13px 16px;
           font-size: 0.95rem;
           border: 1px solid #ddd;
@@ -159,6 +160,7 @@ export default function Home() {
         }
         .input:focus { border-color: #aaa; }
         .btn {
+          flex-shrink: 0;
           padding: 13px 20px;
           font-size: 0.9rem;
           font-weight: 600;
@@ -172,6 +174,21 @@ export default function Home() {
         }
         .btn:hover:not(:disabled) { background: #333; }
         .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        @media (max-width: 480px) {
+          main {
+            padding: 40px 16px 40px;
+          }
+          .form {
+            flex-direction: column;
+          }
+          .btn {
+            width: 100%;
+            padding: 14px;
+          }
+          h1 {
+            font-size: 1.4rem;
+          }
+        }
         .error { font-size: 0.85rem; color: #c0392b; }
 
         .results {
