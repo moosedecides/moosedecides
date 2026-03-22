@@ -114,7 +114,7 @@ export default function Home() {
                       </a>
                                       {item.image && (
                         <img
-                          src={item.image}
+                          src={`/api/image-proxy?url=${encodeURIComponent(item.image)}`}
                           alt={item.title}
                           className="product-thumb"
                           onError={(e) => { e.target.style.display = 'none'; }}
