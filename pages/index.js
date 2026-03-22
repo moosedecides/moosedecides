@@ -107,9 +107,14 @@ export default function Home() {
                       <span className="pro">✓ {item.pros[1]}</span>
                       <span className="con"><em>✗ {item.con}</em></span>
                     </div>
-                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="link">
-                      View Product →
-                    </a>
+                    <div className="card-footer">
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="link">
+                        View Product →
+                      </a>
+                      {item.image && (
+                        <img src={item.image} alt={item.title} className="product-thumb" />
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -306,9 +311,15 @@ export default function Home() {
         }
         .pro { font-size: 0.82rem; color: #444; }
         .con { font-size: 0.82rem; color: #666; }
+        .card-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 6px;
+          gap: 8px;
+        }
         .link {
           display: inline-block;
-          margin-top: 4px;
           padding: 7px 14px;
           font-size: 0.82rem;
           font-weight: 600;
@@ -318,9 +329,18 @@ export default function Home() {
           text-decoration: none;
           border: 1px solid #e0ddd8;
           transition: background 0.15s;
-          width: fit-content;
+          white-space: nowrap;
         }
         .link:hover { background: #e5e1db; }
+        .product-thumb {
+          width: 64px;
+          height: 64px;
+          object-fit: contain;
+          border-radius: 8px;
+          background: #f7f6f3;
+          border: 1px solid #eeece8;
+          flex-shrink: 0;
+        }
 
         footer {
           text-align: center;
