@@ -113,6 +113,8 @@ export default async function handler(req, res) {
         source: product.source,
         link,
         image: product.thumbnail || null,
+        rating: product.rating ? Math.round(product.rating * 2 * 10) / 10 : null,
+        reviews: product.reviews || null,
         pros: r.pros || ['Great choice', 'Well reviewed'],
         con: r.con || 'Check reviews',
         summary: r.summary || '',

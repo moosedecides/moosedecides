@@ -108,6 +108,9 @@ export default function Home() {
                       <span className="pro">✓ {item.pros[1]}</span>
                       <span className="con"><em>✗ {item.con}</em></span>
                     </div>
+                    {item.rating && (
+                      <div className="rating">Rating: {item.rating}/10{item.reviews ? ` · ${item.reviews.toLocaleString()} reviews` : ''}</div>
+                    )}
                     <div className="card-footer">
                       <a href={item.link} target="_blank" rel="noopener noreferrer" className="link">
                         View Product →
@@ -320,6 +323,11 @@ export default function Home() {
         }
         .pro { font-size: 0.82rem; color: #444; }
         .con { font-size: 0.82rem; color: #666; }
+        .rating {
+          font-size: 0.8rem;
+          color: #8b7cf8;
+          font-weight: 600;
+        }
         .card-footer {
           display: flex;
           align-items: center;
