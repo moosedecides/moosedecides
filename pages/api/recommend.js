@@ -112,7 +112,7 @@ export default async function handler(req, res) {
         price: product.price,
         source: product.source,
         link,
-        image: product.serpapi_thumbnail || product.thumbnail || null,
+        image: product.thumbnail || null,
         pros: r.pros || ['Great choice', 'Well reviewed'],
         con: r.con || 'Check reviews',
         summary: r.summary || '',
