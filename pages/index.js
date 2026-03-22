@@ -274,11 +274,12 @@ export default function Home() {
           display: flex;
           flex-direction: column;
           gap: 6px;
-          border: 1px solid #e8e6e1;
+          border: 1.5px solid #8b7cf8;
+          box-shadow: 0 2px 12px rgba(139,124,248,0.08);
           transition: box-shadow 0.2s, transform 0.2s;
         }
         .card:hover {
-          box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+          box-shadow: 0 4px 20px rgba(139,124,248,0.18);
           transform: translateY(-1px);
         }
         .card-top {
@@ -341,12 +342,12 @@ export default function Home() {
         }
         .link:hover { background: #e5e1db; }
         .product-thumb {
-          width: 96px;
-          height: 96px;
+          width: 128px;
+          height: 128px;
           object-fit: contain;
           border-radius: 10px;
           background: #f7f6f3;
-          border: 1px solid #eeece8;
+          border: 1.5px solid #8b7cf8;
           flex-shrink: 0;
           transition: opacity 0.15s;
           cursor: pointer;
