@@ -108,14 +108,16 @@ export default function Home() {
                       <span className="pro">✓ {item.pros[1]}</span>
                       <span className="con"><em>✗ {item.con}</em></span>
                     </div>
-                    {item.rating && (
-                      <div className="rating">Rating: {item.rating}/10{item.reviews ? ` · ${item.reviews.toLocaleString()} reviews` : ''}</div>
-                    )}
                     <div className="card-footer">
-                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="link">
-                        View Product →
-                      </a>
-                                      {item.image && (
+                      <div className="card-footer-left">
+                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="link">
+                          View Product →
+                        </a>
+                        {item.rating && (
+                          <div className="rating">Rating: {item.rating}/10{item.reviews ? ` · ${item.reviews.toLocaleString()} reviews` : ''}</div>
+                        )}
+                      </div>
+                      {item.image && (
                         <a href={item.link} target="_blank" rel="noopener noreferrer">
                           <img
                             src={`/api/image-proxy?url=${encodeURIComponent(item.image)}`}
@@ -333,7 +335,12 @@ export default function Home() {
           align-items: center;
           justify-content: space-between;
           margin-top: 6px;
-          gap: 8px;
+          gap: 12px;
+        }
+        .card-footer-left {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
         }
         .link {
           display: inline-block;
@@ -350,8 +357,8 @@ export default function Home() {
         }
         .link:hover { background: #e5e1db; }
         .product-thumb {
-          width: 128px;
-          height: 128px;
+          width: 160px;
+          height: 160px;
           object-fit: contain;
           border-radius: 10px;
           background: #f7f6f3;
