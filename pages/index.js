@@ -23,6 +23,7 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+      console.log('Results with images:', data.results.map(r => ({ title: r.title, image: r.image })));
       setResults(data.results);
     } catch {
       setError('Something went wrong. Please try again.');
@@ -111,8 +112,13 @@ export default function Home() {
                       <a href={item.link} target="_blank" rel="noopener noreferrer" className="link">
                         View Product →
                       </a>
-                      {item.image && (
-                        <img src={item.image} alt={item.title} className="product-thumb" />
+                                      {item.image && (
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="product-thumb"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
                       )}
                     </div>
                   </div>
