@@ -44,7 +44,7 @@ async function getProductLink(result) {
 // Step 3: GPT selects Top Pick / Best Value / Budget and writes pros/cons
 async function rankAndEnrich(products, query) {
   const productList = products.map((p, i) =>
-    `${i}: ${p.title} | ${p.price} | ${p.source}`
+    `${i}: ${p.title} | ${p.price} | ${p.source} | rating: ${p.rating ? p.rating + ' stars' : 'no rating'} | reviews: ${p.reviews || 0}`
   ).join('\n');
 
   const completion = await openai.chat.completions.create({
@@ -60,6 +60,11 @@ Pick the best 3 products:
 - Index 0: Top Pick (best overall quality and value)
 - Index 1: Best Value (best quality per dollar)
 - Index 2: Budget (lowest price that still works well)
+
+Rules:
+- NEVER pick a product with a rating below 3.5 stars (shown in the list)
+- NEVER pick a product with fewer than 10 reviews
+- If no product meets the bar, pick the highest rated available
 
 For each selected product write:
 - "index": the product index number from the list
@@ -113,8 +118,8 @@ export default async function handler(req, res) {
         source: product.source,
         link,
         image: product.thumbnail || null,
-        rating: product.rating ? Math.round(product.rating * 2 * 10) / 10 : null,
-        reviews: product.reviews || null,
+        rating: (product.rating && product.reviews >= 10) ? Math.round(product.rating * 2 * 10) / 10 : null,
+        reviews: (product.reviews >= 10) ? product.reviews : null,
         pros: r.pros || ['Great choice', 'Well reviewed'],
         con: r.con || 'Check reviews',
         summary: r.summary || '',
