@@ -113,12 +113,14 @@ export default function Home() {
                         View Product →
                       </a>
                                       {item.image && (
-                        <img
-                          src={`/api/image-proxy?url=${encodeURIComponent(item.image)}`}
-                          alt={item.title}
-                          className="product-thumb"
-                          onError={(e) => { e.target.style.display = 'none'; }}
-                        />
+                        <a href={item.link} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={`/api/image-proxy?url=${encodeURIComponent(item.image)}`}
+                            alt={item.title}
+                            className="product-thumb"
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        </a>
                       )}
                     </div>
                   </div>
@@ -339,14 +341,17 @@ export default function Home() {
         }
         .link:hover { background: #e5e1db; }
         .product-thumb {
-          width: 64px;
-          height: 64px;
+          width: 96px;
+          height: 96px;
           object-fit: contain;
-          border-radius: 8px;
+          border-radius: 10px;
           background: #f7f6f3;
           border: 1px solid #eeece8;
           flex-shrink: 0;
+          transition: opacity 0.15s;
+          cursor: pointer;
         }
+        .product-thumb:hover { opacity: 0.85; }
 
         footer {
           text-align: center;
