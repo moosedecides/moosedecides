@@ -2,84 +2,85 @@ import OpenAI from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const SERP_KEY = process.env.SERPAPI_KEY;
-const PPLX_KEY = process.env.PERPLEXITY_API_KEY;
 
-// Preferred retailers for link selection
-const PREFERRED_RETAILERS = ['amazon.com', 'apple.com', 'target.com', 'bestbuy.com', 'walmart.com', 'rei.com', 'zappos.com', 'adidas.com', 'nike.com', 'trekbikes.com'];
+const PREFERRED_RETAILERS = [
+  'amazon.com', 'apple.com', 'target.com', 'bestbuy.com', 'walmart.com',
+  'rei.com', 'zappos.com', 'adidas.com', 'nike.com', 'trekbikes.com',
+  'homedepot.com', 'lowes.com', 'bhphotovideo.com', 'newegg.com',
+  'costco.com', 'nordstrom.com', 'macys.com', 'dickssportinggoods.com'
+];
 
-// Step 1: Search Google Shopping for real products
-async function searchGoogleShopping(query) {
-  const url = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(query)}&gl=us&hl=en&num=10&api_key=${SERP_KEY}`;
+async function searchGoogleShopping(query, priceRange) {
+  let url = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(query)}&gl=us&hl=en&num=20&api_key=${SERP_KEY}`;
+  if (priceRange && priceRange[0] > 0) url += `&price_low=${priceRange[0]}`;
+  if (priceRange && priceRange[1] < 10000) url += `&price_high=${priceRange[1]}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`SerpApi error: ${res.status}`);
   const data = await res.json();
   return data.shopping_results || [];
 }
 
-// Step 2: For a given shopping result, get direct retailer links via immersive product API
 async function getProductLink(result) {
-  if (!result.serpapi_immersive_product_api) {
-    return null;
-  }
-
+  if (!result.serpapi_immersive_product_api) return null;
   try {
     const url = result.serpapi_immersive_product_api + `&api_key=${SERP_KEY}`;
     const res = await fetch(url);
     const data = await res.json();
     const stores = data.product_results?.stores || [];
-
     if (stores.length === 0) return null;
-
-    // Pick preferred retailer first
     const preferred = stores.find(s =>
       PREFERRED_RETAILERS.some(r => s.link?.toLowerCase().includes(r))
     );
-    const store = preferred || stores[0];
-    return store?.link || null;
+    return (preferred || stores[0])?.link || null;
   } catch {
     return null;
   }
 }
 
-// Step 3: GPT selects Top Pick / Best Value / Budget and writes pros/cons
-async function rankAndEnrich(products, query) {
+async function rankAndEnrich(products, query, refinement, priceRange) {
   const productList = products.map((p, i) =>
-    `${i}: ${p.title} | ${p.price} | ${p.source} | rating: ${p.rating ? p.rating + ' stars' : 'no rating'} | reviews: ${p.reviews || 0}`
+    `${i}: ${p.title} | ${p.price || '?'} | rating: ${p.rating || '?'} | reviews: ${p.reviews || 0}`
   ).join('\n');
+
+  let userContext = `User wants: "${query}"`;
+  if (refinement) userContext += `\nUser's refinement: "${refinement}"`;
+  if (priceRange && (priceRange[0] > 0 || priceRange[1] < 10000)) {
+    userContext += `\nBudget: $${priceRange[0]} – $${priceRange[1]}`;
+  }
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4.1-mini',
     messages: [{
+      role: 'system',
+      content: `You are Moose. You pick the single best product for what the user actually needs. Brutally honest. Never favor brands or popularity. If the user gave a refinement, prioritize that feedback heavily.`
+    }, {
       role: 'user',
-      content: `User searched for: "${query}"
+      content: `${userContext}
 
-Available products:
+Products:
 ${productList}
 
-Pick the best 3 products:
-- Index 0: Top Pick (best overall quality and value)
-- Index 1: Best Value (best quality per dollar)
-- Index 2: Budget (lowest price that still works well)
+Pick 3:
+- TOP PICK: best overall for what they asked
+- BEST VALUE: best quality per dollar
+- BUDGET: cheapest that genuinely works
 
 Rules:
-- NEVER pick a product with a rating below 3.5 stars (shown in the list)
-- NEVER pick a product with fewer than 10 reviews
-- If no product meets the bar, pick the highest rated available
+- Skip anything below 3.5 stars or under 10 reviews
+- If user gave a budget, all picks MUST be in range
+- If user gave a refinement, weight it heavily
+- If nothing qualifies, pick highest rated
 
-For each selected product write:
-- "index": the product index number from the list
-- "pros": array of exactly 2 short pros (max 5 words each)
-- "con": exactly 1 short con (max 7 words)
-- "summary": exactly 1 "best for" line (max 8 words, no period)
+Return for each:
+- "index": product number
+- "summary": why this product fits them (MAX 15 words, be specific to their needs)
+- "pros": array of 1-3 strengths (MAX 5 words each)
+- "con": 1 honest weakness (MAX 6 words) or "" if none
 
-Return ONLY this JSON array:
-[
-  {"index": N, "pros": ["",""], "con": "", "summary": ""},
-  {"index": N, "pros": ["",""], "con": "", "summary": ""},
-  {"index": N, "pros": ["",""], "con": "", "summary": ""}
-]`
+ONLY return JSON:
+[{"index":0,"summary":"","pros":[""],"con":""},{"index":0,"summary":"","pros":[""],"con":""},{"index":0,"summary":"","pros":[""],"con":""}]`
     }],
-    temperature: 0.3,
+    temperature: 0.2,
     max_tokens: 500,
   });
 
@@ -91,22 +92,20 @@ Return ONLY this JSON array:
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const { query } = req.body;
+  const { query, refinement, priceRange } = req.body;
   if (!query?.trim()) return res.status(400).json({ error: 'Query is required' });
 
   try {
-    // Step 1: Get real products from Google Shopping
-    const shoppingResults = await searchGoogleShopping(query);
+    let searchQuery = query;
+    if (refinement) searchQuery = `${query} ${refinement}`;
+
+    const shoppingResults = await searchGoogleShopping(searchQuery, priceRange);
     if (!shoppingResults.length) throw new Error('No products found');
 
-    // Step 2: GPT picks best 3 and enriches with pros/cons
-    const ranked = await rankAndEnrich(shoppingResults.slice(0, 15), query);
-
-    // Step 3: Get real retailer links for selected products (in parallel)
+    const ranked = await rankAndEnrich(shoppingResults.slice(0, 15), query, refinement, priceRange);
     const selectedProducts = ranked.map(r => shoppingResults[r.index]);
     const links = await Promise.all(selectedProducts.map(p => getProductLink(p)));
 
-    // Step 4: Build final results
     const labels = ['Top Pick', 'Best Value', 'Budget'];
     const results = ranked.map((r, i) => {
       const product = selectedProducts[i];
@@ -120,8 +119,8 @@ export default async function handler(req, res) {
         image: product.thumbnail || null,
         rating: (product.rating && product.reviews >= 10) ? Math.round(product.rating * 2 * 10) / 10 : null,
         reviews: (product.reviews >= 10) ? product.reviews : null,
-        pros: r.pros || ['Great choice', 'Well reviewed'],
-        con: r.con || 'Check reviews',
+        pros: r.pros || ['Well reviewed'],
+        con: r.con || '',
         summary: r.summary || '',
       };
     });
