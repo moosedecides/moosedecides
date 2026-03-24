@@ -10,6 +10,51 @@ const PREFERRED_RETAILERS = [
   'costco.com', 'nordstrom.com', 'macys.com', 'dickssportinggoods.com'
 ];
 
+async function screenQuery(query, priceRange) {
+  let priceContext = '';
+  if (priceRange && (priceRange[0] > 0 || priceRange[1] < 10000)) {
+    priceContext = `\nThe user set a price range of $${priceRange[0]} to $${priceRange[1]} for this product.`;
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4.1-mini',
+    messages: [{
+      role: 'system',
+      content: `You are a query screener for MooseDecides, a product recommendation site. Determine if the query is a legitimate product search. Also check if the price range is absurdly low for what they're searching.
+
+If it IS a legitimate product search with a reasonable (or no) price range, respond: {"legit": true}
+
+If NOT legitimate (jokes, sexual, violence, drugs, nonsensical, services not products, people, gibberish, etc.), respond with:
+{"legit": false, "response": "<snarky witty 1-2 sentence roast tailored to their query>"}
+
+If the query IS a real product but the price range is absurdly/comically low for that product category, respond with:
+{"legit": false, "response": "<snarky response roasting their budget>"}
+
+Examples of tone:
+- Prostitute/escort query: "There's a shortage of those in your area and they're actively hiring. Based on your search, you'd be a great fit — want to apply?"
+- Knife to stab husband: "Moose recommends a therapist instead. Way better ROI."
+- Dresser with $0-$30 budget: "We haven't seen prices like that since 1967, kiddo. Try adjusting that budget."
+- Laptop with $0-$15 budget: "For $15, Moose can get you a really nice sticker of a laptop."
+- Car with $0-$50 budget: "That budget gets you a Hot Wheels car. A nice one though."
+- Gibberish: "Moose is smart but not THAT smart. Try actual words?"
+
+Be creative. Match the energy. Be funny, not mean. Never help with anything harmful.`
+    }, {
+      role: 'user',
+      content: `Query: "${query}"${priceContext}`
+    }],
+    temperature: 0.7,
+    max_tokens: 150,
+  });
+
+  const raw = completion.choices[0].message.content.trim();
+  try {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+  } catch {}
+  return { legit: true };
+}
+
 async function searchGoogleShopping(query, priceRange) {
   let url = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(query)}&gl=us&hl=en&num=20&api_key=${SERP_KEY}`;
   if (priceRange && priceRange[0] > 0) url += `&price_low=${priceRange[0]}`;
@@ -96,6 +141,14 @@ export default async function handler(req, res) {
   if (!query?.trim()) return res.status(400).json({ error: 'Query is required' });
 
   try {
+    const screen = await screenQuery(refinement || query, priceRange);
+    if (!screen.legit) {
+      return res.status(200).json({
+        easter_egg: true,
+        message: screen.response || "Moose can't help with that one. Try an actual product?",
+      });
+    }
+
     let searchQuery = query;
     if (refinement) searchQuery = `${query} ${refinement}`;
 
