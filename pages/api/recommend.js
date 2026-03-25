@@ -10,7 +10,33 @@ const PREFERRED_RETAILERS = [
   'costco.com', 'nordstrom.com', 'macys.com', 'dickssportinggoods.com'
 ];
 
-// Step 0: Screen for jokes/NSFW/absurd pricing
+// ——— SIMPLE IN-MEMORY CACHE (24 hours) ———
+const cache = new Map();
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+function getCacheKey(query, priceRange) {
+  const norm = query.toLowerCase().trim().replace(/\s+/g, ' ');
+  const pr = priceRange ? `${priceRange[0]}-${priceRange[1]}` : 'any';
+  return `${norm}|${pr}`;
+}
+
+function getCache(key) {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) { cache.delete(key); return null; }
+  return entry.data;
+}
+
+function setCache(key, data) {
+  cache.set(key, { data, ts: Date.now() });
+  // Prevent memory bloat — cap at 500 entries
+  if (cache.size > 500) {
+    const oldest = cache.keys().next().value;
+    cache.delete(oldest);
+  }
+}
+
+// ——— STEP 0: Screen query (jokes, NSFW, directions, advice, services) ———
 async function screenQuery(query, priceRange) {
   let priceContext = '';
   if (priceRange && (priceRange[0] > 0 || priceRange[1] < 10000)) {
@@ -21,36 +47,38 @@ async function screenQuery(query, priceRange) {
     model: 'gpt-4.1-mini',
     messages: [{
       role: 'system',
-      content: `You screen queries for MooseDecides, a product recommendation site.
+      content: `You screen queries for MooseDecides, a product recommendation site. Determine if this is a legitimate PRODUCT PURCHASE search.
 
-IMPORTANT: Be VERY lenient. Almost everything should pass as legit.
-
-ONLY flag as not legit if the query is:
-- Explicitly asking for sex workers, prostitutes, escorts, or sexual services (not sexual products — those are fine)
-- Explicitly asking to harm or kill someone
-- Pure gibberish with no meaning whatsoever
+ONLY flag as NOT legit if the query is:
+- Asking for sex workers, prostitutes, escorts, or sexual services
+- Asking to harm or kill someone
+- Pure gibberish with no meaning
 - Asking for illegal drugs by name
-- Clearly a joke that has NOTHING to do with any purchasable product
+- A joke that has NOTHING to do with any purchasable product
+- Asking for DIRECTIONS or LOCATIONS ("where is", "near me", "find a", "around me") for services like restaurants, stores, mechanics, etc. — these are not product searches
+- Asking for ADVICE or LIFE HELP ("what should I do", "how do I deal with", "help me with my") — not product searches
+- Asking about PEOPLE by name in a non-product context
+- Asking questions that aren't about buying something
 
 NEVER flag:
-- Any real product, no matter how niche or unusual
-- Budget products or cheap items — cheap products exist in every category
-- Anything that COULD be a real product even if it sounds weird
-- Sports equipment, home improvement, electronics, appliances, filters, parts, accessories
-- Any product with an adjective like "fixed", "outdoor", "hybrid", "portable", etc.
+- Any real purchasable product, no matter how niche
+- Budget products — cheap products exist everywhere
+- Anything that COULD be a real product
+- Sports equipment, electronics, appliances, parts, accessories, tools, clothing, bikes, etc.
 
-For price ranges, ONLY roast if the budget is COMICALLY impossible — like $0-$25 for a car, $0-$10 for a laptop, $0-$5 for furniture. If there's ANY chance products exist at that price point, let it through. When in doubt, LET IT THROUGH.
+For price ranges, ONLY roast if COMICALLY impossible: $0-$25 for a car, $0-$10 for a laptop. If ANY chance products exist at that price, let it through.
 
 If legit: {"legit": true}
-If not legit: {"legit": false, "response": "<funny 1-2 sentence roast>"}
+If not legit: {"legit": false, "response": "<funny 1-2 sentence roast tailored to their query>"}
 
-Examples:
-- Prostitute query: "There's a shortage in your area and they're hiring. You'd be a great fit — want to apply?"
-- Knife to stab husband: "Moose recommends a therapist instead. Way better ROI."
-- Laptop for $0-$10: "For $10, Moose can get you a very convincing drawing of a laptop."
-- Car for $0-$25: "We haven't seen those prices since horse-and-buggy days, kiddo."
+Roast examples:
+- Prostitute: "There's a shortage in your area and they're hiring. Based on your search, you'd be a great fit — want to apply?"
+- Directions to jiffy lube: "Moose finds products, not oil change shops. Try Google Maps — it's free and won't judge you."
+- "What should I do about my friend": "Moose sells products, not life advice. But between us... you already know the answer."
+- Harm someone: "Moose recommends a therapist instead. Way better ROI."
+- Laptop for $10: "For $10, Moose can get you a very convincing drawing of a laptop."
 
-When in doubt, respond {"legit": true}. False positives are much worse than letting a joke through.`
+When in doubt, respond {"legit": true}.`
     }, {
       role: 'user',
       content: `Query: "${query}"${priceContext}`
@@ -67,30 +95,33 @@ When in doubt, respond {"legit": true}. False positives are much worse than lett
   return { legit: true };
 }
 
-// Step 1: Smart query preprocessing — AI figures out what to actually search for
+// ——— STEP 1: Smart query preprocessing ———
 async function buildSmartQuery(originalQuery) {
   const completion = await openai.chat.completions.create({
     model: 'gpt-4.1-mini',
     messages: [{
       role: 'system',
-      content: `You are a product search expert. Convert the user's query into the BEST possible Google Shopping search query.
+      content: `You are a product search expert. Convert the user's query into the BEST Google Shopping search query.
 
-Key rules:
-- If the user mentions a specific model number, appliance, or device and wants a COMPATIBLE PART or ACCESSORY, figure out the exact compatible product and search for THAT. Example: "water filter for GE GNE27JYMNFFS" → compatible filter is GE XWFE → search "GE XWFE refrigerator water filter"
-- If the query is already a good product search, clean it up and return it
-- Remove filler words like "best", "good", "recommend" — Google Shopping doesn't need them
-- Keep it under 10 words
-- If the user mentions a use case, translate to product features. Example: "chair for someone who sits 10 hours" → "ergonomic office chair lumbar support"
-- If unsure about compatibility, keep the model number in the search as a fallback
+Rules:
+- If user mentions a model number and wants a COMPATIBLE PART, figure out the exact part. Example: "water filter for GE GNE27JYMNFFS" → "GE XWFE refrigerator water filter"
+- If user mentions body size (height, weight) for sized products (bikes, clothing, shoes), include the appropriate size in the query. Examples:
+  - "hybrid bike for 6'2 250lb man" → "hybrid bike XL frame"
+  - "running shoes for wide feet size 12" → "running shoes wide size 12"
+  - "wetsuit for 5'10 180lb" → "wetsuit large tall"
+- Remove filler words ("best", "good", "recommend")
+- Keep under 10 words
+- Translate use cases to features: "chair for 10hr sitting" → "ergonomic office chair lumbar support"
+- If unsure about compatibility, keep model number as fallback
 
 Return JSON:
-{"query": "optimized search query", "note": "1-sentence note about what you found, like 'The compatible filter for this model is the GE XWFE' or '' if nothing special"}`
+{"query": "optimized search", "note": "1-sentence context or '' if nothing special", "size": "detected size like XL, size 12, etc. or '' if none"}`
     }, {
       role: 'user',
       content: originalQuery
     }],
     temperature: 0.2,
-    max_tokens: 100,
+    max_tokens: 120,
   });
 
   const raw = completion.choices[0].message.content.trim();
@@ -98,10 +129,10 @@ Return JSON:
     const match = raw.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
   } catch {}
-  return { query: originalQuery, note: '' };
+  return { query: originalQuery, note: '', size: '' };
 }
 
-// Step 2: Search Google Shopping
+// ——— STEP 2: Search Google Shopping ———
 async function searchGoogleShopping(query, priceRange) {
   let url = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(query)}&gl=us&hl=en&num=20&api_key=${SERP_KEY}`;
   if (priceRange) {
@@ -114,7 +145,7 @@ async function searchGoogleShopping(query, priceRange) {
   return data.shopping_results || [];
 }
 
-// Step 3: Get direct retailer link
+// ——— STEP 3: Get retailer link ———
 async function getProductLink(result) {
   if (!result.serpapi_immersive_product_api) return null;
   try {
@@ -132,7 +163,7 @@ async function getProductLink(result) {
   }
 }
 
-// Step 4: GPT ranks and enriches with context
+// ——— STEP 4: GPT ranks — strict price enforcement, all 3 must be different ———
 async function rankAndEnrich(products, query, refinement, priceRange, smartNote) {
   const productList = products.map((p, i) =>
     `${i}: ${p.title} | ${p.price || '?'} | rating: ${p.rating || '?'} | reviews: ${p.reviews || 0}`
@@ -141,17 +172,21 @@ async function rankAndEnrich(products, query, refinement, priceRange, smartNote)
   let userContext = `User wants: "${query}"`;
   if (refinement) userContext += `\nUser's refinement: "${refinement}"`;
   if (priceRange && (priceRange[0] > 0 || priceRange[1] < 10000)) {
-    userContext += `\nBudget: $${priceRange[0]} – $${priceRange[1]}. All picks MUST be within this range.`;
+    userContext += `\nBudget: $${priceRange[0]} – $${priceRange[1]}. STRICT: Every pick MUST have a price within this range. If a product costs more than $${priceRange[1]} or less than $${priceRange[0]}, do NOT pick it.`;
   }
-  if (smartNote) {
-    userContext += `\nImportant context: ${smartNote}`;
-  }
+  if (smartNote) userContext += `\nContext: ${smartNote}`;
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4.1-mini',
     messages: [{
       role: 'system',
-      content: `You are Moose. Pick the best product for the user's needs. Brutally honest. Never favor brands or popularity. If there is "Important context" provided, use it to make better picks — for example if it says a specific model is compatible, prioritize that exact model.`
+      content: `You are Moose. Pick the best products. Brutally honest. Never favor brands.
+
+CRITICAL RULES:
+1. If user set a budget, EVERY pick must have a price WITHIN that range. Parse the dollar amount from the price field and compare it to the budget. If the price exceeds the max budget, DO NOT pick it.
+2. All 3 picks MUST be DIFFERENT products. Never pick the same product twice.
+3. BUDGET pick must be the CHEAPEST of the three. TOP PICK can be any price in range. BEST VALUE should balance quality and price.
+4. If a smart context note identifies a specific compatible product, prioritize it.`
     }, {
       role: 'user',
       content: `${userContext}
@@ -159,26 +194,26 @@ async function rankAndEnrich(products, query, refinement, priceRange, smartNote)
 Products:
 ${productList}
 
-Pick 3:
-- TOP PICK: best overall for what they asked
-- BEST VALUE: best quality per dollar
-- BUDGET: cheapest that genuinely works
+Pick 3 DIFFERENT products:
+- TOP PICK: best overall for their needs (within budget)
+- BEST VALUE: best quality per dollar (within budget)
+- BUDGET: cheapest good option (must be lowest price of the 3)
 
 Rules:
 - Skip anything below 3.5 stars or under 10 reviews
-- ALL picks MUST be within budget if one was set
-- If important context identifies a specific compatible product, prioritize it
-- If user gave a refinement, weight it heavily
-- If nothing qualifies, pick highest rated within budget
+- ALL prices must be within budget range
+- All 3 must be DIFFERENT products (different index numbers)
+- Budget must be the cheapest of the three
+- If nothing qualifies within budget, pick closest options and note it
 
 Return for each:
-- "index": product number
-- "summary": why this fits them (MAX 15 words, specific to needs)
-- "pros": array of 1-3 strengths (MAX 5 words each)
-- "con": 1 honest weakness (MAX 6 words) or "" if none
+- "index": product number (all 3 must be different)
+- "summary": why this fits (MAX 15 words)
+- "pros": 1-3 strengths (MAX 5 words each)
+- "con": 1 weakness (MAX 6 words) or ""
 
 ONLY return JSON:
-[{"index":0,"summary":"","pros":[""],"con":""},{"index":0,"summary":"","pros":[""],"con":""},{"index":0,"summary":"","pros":[""],"con":""}]`
+[{"index":0,"summary":"","pros":[""],"con":""},{"index":1,"summary":"","pros":[""],"con":""},{"index":2,"summary":"","pros":[""],"con":""}]`
     }],
     temperature: 0.2,
     max_tokens: 500,
@@ -187,57 +222,96 @@ ONLY return JSON:
   const raw = completion.choices[0].message.content.trim();
   const match = raw.match(/\[[\s\S]*\]/);
   if (!match) throw new Error('No JSON from GPT');
-  return JSON.parse(match[0]);
+  const parsed = JSON.parse(match[0]);
+
+  // Enforce: all 3 must have different indices
+  const indices = parsed.map(p => p.index);
+  if (new Set(indices).size < 3) {
+    // Deduplicate by picking next available product
+    const used = new Set();
+    for (const pick of parsed) {
+      if (used.has(pick.index)) {
+        for (let j = 0; j < products.length; j++) {
+          if (!used.has(j)) { pick.index = j; break; }
+        }
+      }
+      used.add(pick.index);
+    }
+  }
+
+  return parsed;
 }
 
-// Main handler
+// ——— MAIN HANDLER ———
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { query, refinement, priceRange } = req.body;
   if (!query?.trim()) return res.status(400).json({ error: 'Query is required' });
 
   try {
-    // Screen for jokes/NSFW/absurd pricing
-    const screen = await screenQuery(refinement || query, priceRange);
-    if (!screen.legit) {
-      return res.status(200).json({
-        easter_egg: true,
-        message: screen.response || "Moose can't help with that one.",
-      });
+    // Check cache first
+    const cacheKey = getCacheKey(refinement ? `${query} ${refinement}` : query, priceRange);
+    const cached = getCache(cacheKey);
+    if (cached) {
+      return res.status(200).json(cached);
     }
 
-    // Smart query preprocessing
-    let searchText = query;
-    if (refinement) searchText = `${query} ${refinement}`;
-    const smart = await buildSmartQuery(searchText);
+    // Run screening AND smart query in PARALLEL
+    const searchText = refinement ? `${query} ${refinement}` : query;
+    const [screen, smart] = await Promise.all([
+      screenQuery(searchText, priceRange),
+      buildSmartQuery(searchText),
+    ]);
+
+    // Check screening result
+    if (!screen.legit) {
+      const response = { easter_egg: true, message: screen.response || "Moose can't help with that one." };
+      return res.status(200).json(response);
+    }
+
     const smartQuery = smart.query || searchText;
 
     // Search with smart query
     let shoppingResults = await searchGoogleShopping(smartQuery, priceRange);
 
-    // Fallback: try original query if smart query returned nothing
+    // Fallback: original query with price filter
     if (!shoppingResults.length && smartQuery !== searchText) {
       shoppingResults = await searchGoogleShopping(searchText, priceRange);
     }
 
-    // Fallback: try without price filter
+    // Fallback: smart query without price filter
     if (!shoppingResults.length && priceRange) {
       shoppingResults = await searchGoogleShopping(smartQuery, null);
     }
 
-    // Fallback: try simplified original query
+    // Fallback: simplified query
     if (!shoppingResults.length) {
-      const simpleQuery = query.split(' ').slice(0, 4).join(' ');
-      shoppingResults = await searchGoogleShopping(simpleQuery, null);
+      const simple = query.split(' ').slice(0, 4).join(' ');
+      shoppingResults = await searchGoogleShopping(simple, null);
     }
 
     if (!shoppingResults.length) throw new Error('No products found');
 
-    // Rank with full context including smart note
+    // If price range set, pre-filter results that are way outside budget
+    let filtered = shoppingResults;
+    if (priceRange && priceRange[1] < 10000) {
+      const maxBudget = priceRange[1];
+      const minBudget = priceRange[0];
+      filtered = shoppingResults.filter(p => {
+        if (!p.price) return true;
+        const num = parseFloat(p.price.replace(/[^0-9.]/g, ''));
+        if (isNaN(num)) return true;
+        return num >= minBudget * 0.9 && num <= maxBudget * 1.1; // 10% tolerance
+      });
+      // If filtering removed everything, use unfiltered
+      if (filtered.length < 3) filtered = shoppingResults;
+    }
+
+    // Rank with context
     const ranked = await rankAndEnrich(
-      shoppingResults.slice(0, 15), query, refinement, priceRange, smart.note
+      filtered.slice(0, 15), query, refinement, priceRange, smart.note
     );
-    const selectedProducts = ranked.map(r => shoppingResults[r.index]);
+    const selectedProducts = ranked.map(r => filtered[r.index]);
     const links = await Promise.all(selectedProducts.map(p => getProductLink(p)));
 
     const labels = ['Top Pick', 'Best Value', 'Budget'];
@@ -259,7 +333,12 @@ export default async function handler(req, res) {
       };
     });
 
-    return res.status(200).json({ results, note: smart.note || null });
+    const response = { results, note: smart.note || null };
+
+    // Cache the result
+    setCache(cacheKey, response);
+
+    return res.status(200).json(response);
   } catch (err) {
     console.error('Error:', err.message);
     return res.status(500).json({ error: 'Failed to get recommendations. Please try again.' });

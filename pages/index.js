@@ -68,7 +68,7 @@ function HorizontalPriceSlider({ min, max, onMin, onMax }) {
       </div>
       <div className="hs-ends"><span>$0</span><span>$10k</span></div>
       <style jsx>{`
-        .hs { width: 100%; user-select: none; -webkit-user-select: none; }
+        .hs { width: 75%; margin: 0 auto; user-select: none; -webkit-user-select: none; }
         .hs-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .hs-lbl { font-size: 0.72rem; font-weight: 600; color: ${P}; }
         .hs-range { font-size: 0.82rem; font-weight: 700; color: ${P}; }
@@ -79,7 +79,49 @@ function HorizontalPriceSlider({ min, max, onMin, onMax }) {
         .hs-thumb:active { cursor: grabbing; transform: translate(-50%,-50%) scale(1.12); }
         .hs-ends { display: flex; justify-content: space-between; margin-top: 0; }
         .hs-ends span { font-size: 0.6rem; color: rgba(139,124,248,0.45); font-weight: 500; }
+        @media (max-width: 480px) {
+          .hs { width: 80%; }
+        }
       `}</style>
+    </div>
+  );
+}
+
+function ResultCard({ item, labelStyles, onImageClick }) {
+  const ls = labelStyles[item.label] || labelStyles['Top Pick'];
+  return (
+    <div className="card">
+      <div className="c-top">
+        <span className="c-label" style={{ background: ls.bg, color: ls.text }}>{item.label}</span>
+        {item.price && <span className="c-price">{item.price}</span>}
+      </div>
+      <div className="c-body">
+        <div className="c-info">
+          <div className="c-title">{item.title}</div>
+          <div className="c-summary">{item.summary}</div>
+          <div className="c-pros">
+            {item.pros.map((p, j) => <div key={j} className="c-pro">&#10003; {p}</div>)}
+            {item.con && <div className="c-con">&#10007; {item.con}</div>}
+          </div>
+          <div className="c-actions">
+            <a href={item.link} target="_blank" rel="noopener noreferrer" className="c-vbtn"
+              onClick={(e) => e.stopPropagation()}>View Product →</a>
+            {item.rating && (
+              <div className="c-rating">
+                Rating: {item.rating}/10{item.reviews ? ` · ${item.reviews.toLocaleString()} reviews` : ''}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="c-imgw">
+          {item.image ? (
+            <img src={`/api/image-proxy?url=${encodeURIComponent(item.image)}`}
+              alt={item.title} className="c-img"
+              onClick={() => onImageClick({ image: item.image, title: item.title })}
+              onError={(e) => { e.target.style.display = 'none'; }} />
+          ) : <div className="c-imgph" />}
+        </div>
+      </div>
     </div>
   );
 }
@@ -90,17 +132,18 @@ export default function Home() {
   const [refinement, setRefinement] = useState('');
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(10000);
-  const [results, setResults] = useState(null);
+  const [resultSets, setResultSets] = useState([]); // array of { results, label }
   const [easterEgg, setEasterEgg] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPromise, setShowPromise] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const initialLoad = useRef(true);
+  const refineRef = useRef(null);
 
   const hasPriceFilter = priceMin > 0 || priceMax < 10000;
 
-  const doSearch = useCallback(async (q, ref, pMin, pMax) => {
+  const doSearch = useCallback(async (q, ref, pMin, pMax, isRefine) => {
     if (!q || !q.trim()) return;
     setLoading(true);
     setError('');
@@ -111,9 +154,9 @@ export default function Home() {
       const hasPrice = pMin > 0 || pMax < 10000;
       if (hasPrice) body.priceRange = [pMin, pMax];
 
-      // Update URL for sharing
       const params = new URLSearchParams({ q });
       if (hasPrice) { params.set('min', pMin); params.set('max', pMax); }
+      if (ref) params.set('ref', ref);
       router.replace(`/?${params.toString()}`, undefined, { shallow: true });
 
       const res = await fetch('/api/recommend', {
@@ -122,9 +165,25 @@ export default function Home() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (data.easter_egg) { setResults(null); setEasterEgg(data.message); }
-      else if (data.error) throw new Error(data.error);
-      else { setResults(data.results); setEasterEgg(null); }
+
+      if (data.easter_egg) {
+        setEasterEgg(data.message);
+        if (!isRefine) setResultSets([]);
+      } else if (data.error) {
+        throw new Error(data.error);
+      } else {
+        setEasterEgg(null);
+        if (isRefine) {
+          // Add new results below existing ones
+          setResultSets(prev => [...prev, { results: data.results, label: ref || 'Refined' }]);
+          // Scroll to new results after render
+          setTimeout(() => {
+            refineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        } else {
+          setResultSets([{ results: data.results, label: 'Results' }]);
+        }
+      }
     } catch {
       setError('Something went wrong. Try again.');
     } finally {
@@ -132,7 +191,6 @@ export default function Home() {
     }
   }, [router]);
 
-  // Load from URL on first visit
   useEffect(() => {
     if (!initialLoad.current) return;
     initialLoad.current = false;
@@ -144,20 +202,22 @@ export default function Home() {
       const pMax = parseInt(params.get('max')) || 10000;
       setPriceMin(pMin);
       setPriceMax(pMax);
-      doSearch(q, null, pMin, pMax);
+      doSearch(q, params.get('ref') || null, pMin, pMax, false);
     }
   }, [doSearch]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setRefinement('');
-    doSearch(query, null, priceMin, priceMax);
+    setResultSets([]);
+    doSearch(query, null, priceMin, priceMax, false);
   };
 
   const handleRefine = (e) => {
     e.preventDefault();
     if (!refinement.trim()) return;
-    doSearch(query, refinement, priceMin, priceMax);
+    doSearch(query, refinement, priceMin, priceMax, true);
+    setRefinement('');
   };
 
   const labelStyles = {
@@ -166,14 +226,14 @@ export default function Home() {
     'Budget': { bg: P, text: '#fff' },
   };
 
-  const hasContent = results || easterEgg;
+  const hasContent = resultSets.length > 0 || easterEgg;
 
   return (
     <>
       <Head>
         <title>MooseDecides — Fast, honest recommendations</title>
         <meta name="description" content="Tell Moose what you need. Get 3 picks. Done." />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -186,7 +246,6 @@ export default function Home() {
       </Head>
 
       <div className="page">
-        {/* HEADER — always visible */}
         <header className={hasContent ? 'hdr compact' : 'hdr'}>
           <div className="brand">
             <div className={`mw${loading ? ' walking' : ''}`}>
@@ -199,27 +258,24 @@ export default function Home() {
             <div className="sf-row">
               <input type="text" className="sf-in" value={query}
                 placeholder="best running shoes for flat feet under $150"
-                onChange={(e) => setQuery(e.target.value)} />
+                onChange={(e) => setQuery(e.target.value)}
+                enterKeyHint="search" />
             </div>
             <button type="submit" className="sf-btn" disabled={loading}>
               {loading ? 'Moose is thinking…' : 'Ask Moose'}
             </button>
           </form>
 
-          {/* Price slider — always in header */}
-          <div className="slider-wrap">
-            <HorizontalPriceSlider
-              min={priceMin} max={priceMax}
-              onMin={setPriceMin} onMax={setPriceMax}
-            />
-          </div>
+          <HorizontalPriceSlider
+            min={priceMin} max={priceMax}
+            onMin={setPriceMin} onMax={setPriceMax}
+          />
 
           {!hasContent && !loading && <p className="tag">3 picks. No ads. No scrolling.</p>}
         </header>
 
         {error && <p className="err">{error}</p>}
 
-        {/* Easter egg — plain text, not a card */}
         {easterEgg && (
           <div className="egg">
             <img src="/moose-logo.png" alt="Moose" className="egg-m" />
@@ -227,56 +283,27 @@ export default function Home() {
           </div>
         )}
 
-        {/* Results — full width, no vertical slider */}
-        {results && (
-          <div className="cards-wrap">
-            {results.map((item, i) => {
-              const ls = labelStyles[item.label] || labelStyles['Top Pick'];
-              return (
-                <div key={i} className="card">
-                  <div className="c-top">
-                    <span className="c-label" style={{ background: ls.bg, color: ls.text }}>{item.label}</span>
-                    {item.price && <span className="c-price">{item.price}</span>}
-                  </div>
-                  <div className="c-body">
-                    <div className="c-info">
-                      <div className="c-title">{item.title}</div>
-                      <div className="c-summary">{item.summary}</div>
-                      <div className="c-pros">
-                        {item.pros.map((p, j) => <div key={j} className="c-pro">&#10003; {p}</div>)}
-                        {item.con && <div className="c-con">&#10007; {item.con}</div>}
-                      </div>
-                      <div className="c-actions">
-                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="c-vbtn"
-                          onClick={(e) => e.stopPropagation()}>View Product →</a>
-                        {item.rating && (
-                          <div className="c-rating">
-                            Rating: {item.rating}/10{item.reviews ? ` · ${item.reviews.toLocaleString()} reviews` : ''}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="c-imgw">
-                      {item.image ? (
-                        <img src={`/api/image-proxy?url=${encodeURIComponent(item.image)}`}
-                          alt={item.title} className="c-img"
-                          onClick={() => setLightbox({ image: item.image, title: item.title })}
-                          onError={(e) => { e.target.style.display = 'none'; }} />
-                      ) : <div className="c-imgph" />}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+        {resultSets.map((set, setIdx) => (
+          <div key={setIdx} className="cards-wrap"
+            ref={setIdx === resultSets.length - 1 ? refineRef : null}>
+            {setIdx > 0 && (
+              <div className="refine-divider">
+                <span className="refine-tag">Refined: {set.label}</span>
+              </div>
+            )}
+            {set.results.map((item, i) => (
+              <ResultCard key={`${setIdx}-${i}`} item={item}
+                labelStyles={labelStyles} onImageClick={setLightbox} />
+            ))}
           </div>
-        )}
+        ))}
 
-        {/* Refine bar */}
-        {results && (
+        {resultSets.length > 0 && (
           <form onSubmit={handleRefine} className="rf">
             <input type="text" className="rf-in" value={refinement}
               placeholder="Tell Moose what to change…"
-              onChange={(e) => setRefinement(e.target.value)} />
+              onChange={(e) => setRefinement(e.target.value)}
+              enterKeyHint="send" />
             <button type="submit" className="rf-btn" disabled={loading}>Refine</button>
           </form>
         )}
@@ -287,7 +314,6 @@ export default function Home() {
       <button className="pb" onClick={() => setShowPromise(true)}>Our Promise</button>
       {showPromise && <PromiseModal onClose={() => setShowPromise(false)} />}
 
-      {/* Lightbox */}
       {lightbox && (
         <div className="lb" onClick={() => setLightbox(null)}>
           <div className="lb-inner" onClick={(e) => e.stopPropagation()}>
@@ -299,10 +325,12 @@ export default function Home() {
         </div>
       )}
 
+      <style jsx global>{`
+        html, body { overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: none; }
+      `}</style>
       <style jsx>{`
         .page { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f7f6f3; color:#111; }
 
-        /* Header */
         .hdr { display:flex; flex-direction:column; align-items:center; padding:44px 24px 14px; gap:10px; transition:padding 0.25s; }
         .hdr.compact { padding:12px 24px 8px; gap:6px; }
         .brand { display:flex; align-items:center; gap:10px; }
@@ -313,27 +341,23 @@ export default function Home() {
         h1 { font-size:1.4rem; font-weight:700; margin:0; letter-spacing:-0.3px; }
         .tag { font-size:0.82rem; color:#999; margin:0; }
 
-        /* Search form */
         .sf { display:flex; flex-direction:column; gap:8px; width:100%; max-width:540px; }
-        .sf-row { display:flex; background:#fff; border:1.5px solid ${P}; border-radius:12px; padding:4px; box-shadow:0 2px 16px rgba(139,124,248,0.15); }
+        .sf-row { display:flex; background:#fff; border:1.5px solid ${P}; border-radius:12px; padding:4px; box-shadow:0 2px 16px rgba(139,124,248,0.15); overflow:hidden; }
         .sf-row:focus-within { box-shadow:0 2px 22px rgba(139,124,248,0.28); }
-        .sf-in { flex:1; padding:10px 12px; font-size:0.95rem; border:none; background:transparent; outline:none; color:#111; }
+        .sf-in { flex:1; padding:10px 12px; font-size:0.95rem; border:none; background:transparent; outline:none; color:#111; min-width:0; text-overflow:ellipsis; }
         .sf-btn { width:100%; padding:12px; font-size:0.88rem; font-weight:600; background:#111; color:#fff; border:none; border-radius:10px; cursor:pointer; }
         .sf-btn:hover:not(:disabled) { background:#333; }
         .sf-btn:disabled { opacity:0.5; cursor:not-allowed; }
-
-        /* Slider wrapper */
-        .slider-wrap { width:100%; max-width:540px; }
-
         .err { font-size:0.85rem; color:#c0392b; text-align:center; margin:0; }
 
-        /* Easter egg — plain text */
-        .egg { display:flex; flex-direction:column; align-items:center; padding:24px 24px; flex:1; justify-content:center; gap:10px; }
+        .egg { display:flex; flex-direction:column; align-items:center; padding:24px; flex:1; justify-content:center; gap:10px; }
         .egg-m { width:56px; height:56px; filter:drop-shadow(0 0 2px ${P}); }
         .egg-t { font-size:0.95rem; color:#555; line-height:1.5; margin:0; text-align:center; max-width:400px; }
 
-        /* Cards — full width */
-        .cards-wrap { display:flex; flex-direction:column; gap:8px; padding:4px 16px 0; width:100%; max-width:600px; margin:0 auto; flex:1; }
+        .cards-wrap { display:flex; flex-direction:column; gap:8px; padding:6px 16px 0; width:100%; max-width:600px; margin:0 auto; }
+        .refine-divider { display:flex; align-items:center; gap:8px; padding:8px 0 4px; }
+        .refine-tag { font-size:0.7rem; font-weight:600; color:${P}; background:rgba(139,124,248,0.08); padding:3px 10px; border-radius:12px; border:1px solid rgba(139,124,248,0.2); }
+
         .card { background:#fff; border-radius:14px; padding:11px 14px; border:1.5px solid ${P}; box-shadow:0 2px 12px rgba(139,124,248,0.08); transition:box-shadow 0.2s,transform 0.15s; }
         .card:hover { box-shadow:0 4px 20px rgba(139,124,248,0.18); transform:translateY(-1px); }
 
@@ -350,7 +374,7 @@ export default function Home() {
         .c-con { font-size:0.78rem; color:#999; font-style:italic; }
 
         .c-actions { margin-top:7px; display:flex; flex-direction:column; gap:3px; }
-        .c-vbtn { display:inline-block; padding:5px 14px; font-size:0.78rem; font-weight:600; color:${P}; background:rgba(139,124,248,0.08); border:1px solid rgba(139,124,248,0.3); border-radius:6px; text-decoration:none; width:fit-content; transition:background 0.15s; }
+        .c-vbtn { display:inline-block; padding:5px 14px; font-size:0.78rem; font-weight:600; color:${P}; background:rgba(139,124,248,0.08); border:1px solid rgba(139,124,248,0.3); border-radius:6px; text-decoration:none; width:fit-content; }
         .c-vbtn:hover { background:rgba(139,124,248,0.15); }
         .c-rating { font-size:0.75rem; font-weight:600; color:${GREEN}; }
 
@@ -359,16 +383,15 @@ export default function Home() {
         .c-img:hover { opacity:0.85; }
         .c-imgph { width:100px; height:100px; border-radius:8px; background:#f0ede8; }
 
-        /* Refine */
-        .rf { display:flex; gap:6px; padding:8px 16px 0; width:100%; max-width:600px; margin:0 auto; }
-        .rf-in { flex:1; padding:8px 12px; font-size:0.82rem; border:1.5px solid ${P}; border-radius:8px; background:#fff; outline:none; color:#111; box-shadow:0 1px 8px rgba(139,124,248,0.1); }
+        .rf { display:flex; gap:6px; padding:10px 16px 0; width:100%; max-width:600px; margin:0 auto; position:relative; z-index:10; }
+        .rf-in { flex:1; padding:10px 12px; font-size:0.82rem; border:1.5px solid ${P}; border-radius:8px; background:#fff; outline:none; color:#111; box-shadow:0 1px 8px rgba(139,124,248,0.1); min-width:0; }
         .rf-in:focus { box-shadow:0 1px 14px rgba(139,124,248,0.22); }
         .rf-in::placeholder { color:#bbb; }
-        .rf-btn { padding:8px 16px; font-size:0.82rem; font-weight:600; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer; white-space:nowrap; }
+        .rf-btn { padding:10px 18px; font-size:0.82rem; font-weight:600; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
         .rf-btn:hover:not(:disabled) { background:#333; }
         .rf-btn:disabled { opacity:0.5; }
 
-        footer { text-align:center; padding:14px; display:flex; justify-content:center; gap:18px; flex-shrink:0; }
+        footer { text-align:center; padding:16px; display:flex; justify-content:center; gap:18px; flex-shrink:0; margin-top:auto; }
         footer a { color:#ccc; text-decoration:none; font-size:0.75rem; }
         footer a:hover { color:#888; }
         .pb { position:fixed; bottom:18px; right:18px; padding:8px 14px; font-size:0.72rem; font-weight:600; background:#fff; color:#666; border:1px solid #ddd; border-radius:50px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.07); z-index:100; }
@@ -382,7 +405,7 @@ export default function Home() {
         .lb-t { color:rgba(255,255,255,0.7); font-size:0.85rem; text-align:center; margin:0; }
 
         @media (max-width:480px) {
-          .hdr { padding:28px 16px 12px; }
+          .hdr { padding:28px 16px 10px; }
           .hdr.compact { padding:10px 16px 6px; }
           h1 { font-size:1.2rem; }
           .sf-btn { padding:11px; }
@@ -392,7 +415,7 @@ export default function Home() {
           .c-title { font-size:0.84rem; }
           .c-img { width:88px; height:88px; }
           .c-imgph { width:88px; height:88px; }
-          .rf { padding:6px 12px 0; }
+          .rf { padding:8px 12px 0; }
         }
       `}</style>
     </>
