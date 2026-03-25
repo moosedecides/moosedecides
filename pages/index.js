@@ -87,52 +87,13 @@ function HorizontalPriceSlider({ min, max, onMin, onMax }) {
   );
 }
 
-function ResultCard({ item, labelStyles, onImageClick }) {
-  const ls = labelStyles[item.label] || labelStyles['Top Pick'];
-  return (
-    <div className="card">
-      <div className="c-top">
-        <span className="c-label" style={{ background: ls.bg, color: ls.text }}>{item.label}</span>
-        {item.price && <span className="c-price">{item.price}</span>}
-      </div>
-      <div className="c-body">
-        <div className="c-info">
-          <div className="c-title">{item.title}</div>
-          <div className="c-summary">{item.summary}</div>
-          <div className="c-pros">
-            {item.pros.map((p, j) => <div key={j} className="c-pro">&#10003; {p}</div>)}
-            {item.con && <div className="c-con">&#10007; {item.con}</div>}
-          </div>
-          <div className="c-actions">
-            <a href={item.link} target="_blank" rel="noopener noreferrer" className="c-vbtn"
-              onClick={(e) => e.stopPropagation()}>View Product →</a>
-            {item.rating && (
-              <div className="c-rating">
-                Rating: {item.rating}/10{item.reviews ? ` · ${item.reviews.toLocaleString()} reviews` : ''}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="c-imgw">
-          {item.image ? (
-            <img src={`/api/image-proxy?url=${encodeURIComponent(item.image)}`}
-              alt={item.title} className="c-img"
-              onClick={() => onImageClick({ image: item.image, title: item.title })}
-              onError={(e) => { e.target.style.display = 'none'; }} />
-          ) : <div className="c-imgph" />}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [refinement, setRefinement] = useState('');
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(10000);
-  const [resultSets, setResultSets] = useState([]); // array of { results, label }
+  const [resultSets, setResultSets] = useState([]);
   const [easterEgg, setEasterEgg] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -140,8 +101,6 @@ export default function Home() {
   const [lightbox, setLightbox] = useState(null);
   const initialLoad = useRef(true);
   const refineRef = useRef(null);
-
-  const hasPriceFilter = priceMin > 0 || priceMax < 10000;
 
   const doSearch = useCallback(async (q, ref, pMin, pMax, isRefine) => {
     if (!q || !q.trim()) return;
@@ -174,9 +133,7 @@ export default function Home() {
       } else {
         setEasterEgg(null);
         if (isRefine) {
-          // Add new results below existing ones
           setResultSets(prev => [...prev, { results: data.results, label: ref || 'Refined' }]);
-          // Scroll to new results after render
           setTimeout(() => {
             refineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }, 100);
@@ -291,10 +248,44 @@ export default function Home() {
                 <span className="refine-tag">Refined: {set.label}</span>
               </div>
             )}
-            {set.results.map((item, i) => (
-              <ResultCard key={`${setIdx}-${i}`} item={item}
-                labelStyles={labelStyles} onImageClick={setLightbox} />
-            ))}
+            {set.results.map((item, i) => {
+              const ls = labelStyles[item.label] || labelStyles['Top Pick'];
+              return (
+                <div key={`${setIdx}-${i}`} className="card">
+                  <div className="c-top">
+                    <span className="c-label" style={{ background: ls.bg, color: ls.text }}>{item.label}</span>
+                    {item.price && <span className="c-price">{item.price}</span>}
+                  </div>
+                  <div className="c-body">
+                    <div className="c-info">
+                      <div className="c-title">{item.title}</div>
+                      <div className="c-summary">{item.summary}</div>
+                      <div className="c-pros">
+                        {item.pros.map((p, j) => <div key={j} className="c-pro">&#10003; {p}</div>)}
+                        {item.con && <div className="c-con">&#10007; {item.con}</div>}
+                      </div>
+                      <div className="c-actions">
+                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="c-vbtn"
+                          onClick={(e) => e.stopPropagation()}>View Product →</a>
+                        {item.rating && (
+                          <div className="c-rating">
+                            Rating: {item.rating}/10{item.reviews ? ` · ${item.reviews.toLocaleString()} reviews` : ''}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="c-imgw">
+                      {item.image ? (
+                        <img src={`/api/image-proxy?url=${encodeURIComponent(item.image)}`}
+                          alt={item.title} className="c-img"
+                          onClick={() => setLightbox({ image: item.image, title: item.title })}
+                          onError={(e) => { e.target.style.display = 'none'; }} />
+                      ) : <div className="c-imgph" />}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ))}
 
